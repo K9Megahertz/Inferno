@@ -83,4 +83,8 @@ Thumbs.db
 
 # Output dumps
 *.bin
+<<<<<<< HEAD
 *.dat
+=======
+*.dat
+>>>>>>> 08b311419d1786570a93e5c5479ec44f37e89339
