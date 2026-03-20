@@ -1,0 +1,47 @@
+#include "dividebackward.h"
+
+
+namespace Inferno {
+
+
+	DivideBackward::DivideBackward(const Tensor& A, const Tensor& B) : m_A(A), m_B(B) {
+
+
+	}
+
+	void DivideBackward::backward() {
+		// upstream gradient dL/d(output)
+		Tensor g_out = Engine::grad_in(this, 0);
+
+		// for add: dL/dA = g_out, dL/dB = g_out		
+		Tensor g_a = sum_to_shape(g_out / m_B, m_A.shape());
+		Tensor g_b = sum_to_shape(-g_out * m_A / (m_B * m_B) , m_B.shape());
+
+		// find parent nodes
+		auto na = GetImpl(m_A)->grad_edge();
+		auto nb = GetImpl(m_B)->grad_edge();
+
+		// send gradients upstream
+		if (na)
+			Engine::accumulate(na.get(), 0, g_a);
+
+		if (nb)
+			Engine::accumulate(nb.get(), 0, g_b);
+
+
+
+	}
+
+	void DivideBackward::release() {
+		// drop references so graph can free
+		m_A = Tensor{};
+		m_B = Tensor{};
+	}
+
+	void DivideBackward::get_inputs(std::vector<Tensor>& out) const {
+		out.push_back(m_A);
+		out.push_back(m_B);
+	}
+
+
+}

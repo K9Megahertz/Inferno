@@ -1,0 +1,27 @@
+#pragma once
+#include <chrono>
+#include <string>
+
+namespace Inferno {
+
+    class Timer
+    {
+    public:
+        Timer(const std::string& name = "");
+
+        void start();
+        void stop();
+
+        double elapsed_ms() const;
+        double elapsed_sec() const;
+
+    private:
+        std::string m_name;
+
+        std::chrono::high_resolution_clock::time_point m_start;
+        std::chrono::high_resolution_clock::time_point m_end;
+
+        bool m_running;
+    };
+
+}

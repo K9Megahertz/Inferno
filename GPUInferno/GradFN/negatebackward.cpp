@@ -1,0 +1,44 @@
+#include "negatebackward.h"
+
+
+namespace Inferno {
+
+
+	NegateBackward::NegateBackward(const Tensor& A) : m_A(A) {
+
+
+	}
+
+	void NegateBackward::backward() {
+		// upstream gradient dL/d(output)
+		Tensor g_out = Engine::grad_in(this, 0);
+
+		// for add: dL/dA = g_out, dL/dB = g_out
+		Tensor g_a = sum_to_shape(-g_out, m_A.shape());
+		
+
+		// find parent nodes
+		auto na = GetImpl(m_A)->grad_edge();
+		
+
+		// send gradients upstream
+		if (na)
+			Engine::accumulate(na.get(), 0, g_a);
+
+		
+
+	}
+
+	void NegateBackward::release() {
+		// drop references so graph can free
+		m_A = Tensor{};
+		
+	}
+
+	void NegateBackward::get_inputs(std::vector<Tensor>& out) const {
+		out.push_back(m_A);
+		
+	}
+
+
+}

@@ -1,0 +1,26 @@
+#include "cudaops.h"
+
+namespace Inferno {
+
+
+
+    template<typename AT>
+    __global__ void negate_kernel(const AT* aptr, AT* outptr, size_t N) {
+        size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+        if (i < N) outptr[i] = static_cast<AT>(-aptr[i]);
+    }
+
+    template<typename AT>
+    void cuda_negate(const AT* aptr, AT* outptr, size_t N) {
+        dim3 block(256);
+        dim3 grid((N + block.x - 1) / block.x);
+        negate_kernel << <grid, block >> > (aptr, outptr, N);
+    }
+
+    template void cuda_negate<int>(const int*, int*, size_t);
+    template void cuda_negate<float>(const float*, float*, size_t);
+    template void cuda_negate<double>(const double*, double*, size_t);
+
+    
+
+}
