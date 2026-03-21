@@ -31,7 +31,7 @@ namespace Inferno {
 			}
 
 			m_weights = Tensor(dtype, weight_data, { in_features, out_features }, "weights", device);
-			std::cout << m_weights << std::endl;
+			
 		
 		
 
@@ -55,7 +55,7 @@ namespace Inferno {
 			}
 
 			m_biases = Tensor(dtype, bias_data, { out_features }, "biases",device);
-			std::cout << m_biases << std::endl;
+			
 
 		});
 
@@ -64,8 +64,8 @@ namespace Inferno {
 		m_out_features = out_features;
 
 		// Register parameters
-		//register_parameter(m_weights);
-		//register_parameter(m_biases);
+		register_parameter(m_weights);
+		register_parameter(m_biases);
 
 
 

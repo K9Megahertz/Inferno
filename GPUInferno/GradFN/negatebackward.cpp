@@ -14,7 +14,7 @@ namespace Inferno {
 		Tensor g_out = Engine::grad_in(this, 0);
 
 		// for add: dL/dA = g_out, dL/dB = g_out
-		Tensor g_a = sum_to_shape(-g_out, m_A.shape());
+		Tensor g_a = -g_out;
 		
 
 		// find parent nodes

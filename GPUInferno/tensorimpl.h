@@ -123,8 +123,8 @@ namespace Inferno {
 		const std::string& name() const;
 		size_t ndim();
 		const size_t ndim() const;
-		int id();
-		const int id() const;
+		int& id();
+		const int& id() const;
 		Device& device();
 		const Device& device() const;
 

@@ -13,11 +13,12 @@ namespace  Inferno {
 
 		Linear(size_t in_features, size_t out_features, Device device = Device::cpu(), DType dtype = DType::Float32 );
 		Tensor forward(const Tensor& input);
+		Tensor m_weights;
+		Tensor m_biases;
 
 	private:
 
-		Tensor m_weights;
-		Tensor m_biases;
+		
 		size_t m_in_features;
 		size_t m_out_features;
 

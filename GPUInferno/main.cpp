@@ -1,7 +1,65 @@
 #include "inferno.h"
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//  Class GPTModel
+//
+//
+//
+//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class MyModel : public Inferno::Module {
+
+public:
 
 
+	MyModel(std::vector<int>& layers) : fc1(layers[0], layers[1]),
+										fc2(layers[1], layers[2]),
+										fc3(layers[2], layers[3]) {
+
+
+
+		//TODO: add these to the constructors
+		act1 = Inferno::Sigmoid();
+		act2 = Inferno::Sigmoid();
+		act3 = Inferno::Sigmoid();
+		this->register_module(&fc1);
+		this->register_module(&fc2);
+		this->register_module(&fc3);
+		this->register_module(&act1);
+		this->register_module(&act2);
+		this->register_module(&act3);
+
+	}
+
+	Inferno::Tensor forward(Inferno::Tensor& input) {
+
+		Inferno::Tensor out = fc1.forward(input);
+		out = act1.forward(out);
+		//out = fc2.forward(out);
+		//out = act2.forward(out);
+		//out = fc3.forward(out);
+		//out = act3.forward(out);
+		return out;
+	}
+
+
+	Inferno::Linear fc1;
+	Inferno::Linear fc2;
+	Inferno::Linear fc3;
+
+	Inferno::Sigmoid act1;
+	Inferno::Sigmoid act2;
+	Inferno::Sigmoid act3;
+
+
+
+
+
+};
 
 
 int main() {
@@ -75,7 +133,9 @@ int main() {
 
   	//Inferno::Tensor a(Inferno::DType::Float32, std::vector<float> {1, 2, 3, 4, 5 }, { 5 }, "a", Inferno::Device::cuda(0));
 	
-	Inferno::Tensor a(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(784, -1.0f, 1.0f), { 784 }, "a", Inferno::Device::cuda(0));
+	//Inferno::Tensor input(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(784, -1.0f, 1.0f), { 784 }, "input", Inferno::Device::cpu());
+	Inferno::Tensor input(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(10, -1.0f, 1.0f), { 10 }, "input", Inferno::Device::cpu());
+	Inferno::Tensor target(Inferno::DType::Float32, std::vector<float> {1, 0, 1, 0, 1, 0, 1, 0, 1, 0 }, { 10 }, "target", Inferno::Device::cpu());
 	//Inferno::Tensor b(Inferno::DType::Float32, std::vector<float> {1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0}, { 5,6 }, "b", Inferno::Device::cpu());
 
 	//Inferno::Tensor a(Inferno::DType::Float32, std::vector<float> {1, 2, 3, 4, 5 }, { 5 }, "a", Inferno::Device::cuda(0));
@@ -85,37 +145,50 @@ int main() {
 	//Inferno::Tensor a2 = make_view(a, a.shape(), a.strides(), 0, "a2");
 	//a2.shape() = { 1,2,3,4,5 };
 
-	Inferno::Linear lin1 = Inferno::Linear(784, 512, Inferno::Device::cuda(0));
-	Inferno::Linear lin2 = Inferno::Linear(512, 256, Inferno::Device::cuda(0));
-	Inferno::Linear lin3 = Inferno::Linear(256, 64, Inferno::Device::cuda(0));
-	Inferno::Linear lin4 = Inferno::Linear(64, 10, Inferno::Device::cuda(0));
+
+	//std::vector<int> layers({ 784,512,256,10 });
+	std::vector<int> layers({ 10,10,10,10 });
+
+	MyModel model(layers);
+
+	Inferno::MSELoss loss_fn;
+
+	auto params = model.parameters();
+	Inferno::OptimizerSGD optimizer(params, 0.01f);
 
 	Inferno::Timer t1("matmul");
-	Inferno::Timer t2("matmul");
-	t1.start();
-	for (int i = 0; i < 1; i++) {
+	
+	for (int i = 0; i < 1000000; i++) {
+		
+		t1.start();
 
-		t2.start();
-
-		Inferno::Tensor b = lin1.forward(a);
-		b = lin2.forward(b);
-		b = lin3.forward(b);
-		b = lin4.forward(b);
-
-
-		//Inferno::Tensor g = Inferno::matmul(a,b);	
 		cudaDeviceSynchronize();
 
-		t2.stop();
+		Inferno::Tensor prediction = model.forward(input);
 
-		b.backward();
+		Inferno::Tensor loss = loss_fn(prediction, target);
 
-		std::cout << "forward took: " << t2.elapsed_ms() << " ms\n";
+		//std::cout << prediction << std::endl;
+		//std::cout << loss.item<float>() << std::endl;
+
+		loss.backward();
+
+		//std::cout << model.fc1.m_weights << std::endl;
+		//std::cout << model.fc1.m_biases << std::endl;
+		//std::cout << model.fc2.m_weights << std::endl;
+		//std::cout << model.fc2.m_biases << std::endl;
+		//std::cout << model.fc3.m_weights << std::endl;
+		//std::cout << model.fc3.m_biases << std::endl;
+		
+
+		optimizer.step();
+		optimizer.zero_grad();
+
+
+		t1.stop();
+		std::cout << "total took: " << t1.elapsed_ms() << " ms  Loss: " << loss.item<float>() << std::endl;
 
 	}
-
-	t1.stop();
-	std::cout << "total took: " << t1.elapsed_ms() << " ms\n";
 	//std::cout << a << std::endl;
 	//std::cout << b << std::endl;
 

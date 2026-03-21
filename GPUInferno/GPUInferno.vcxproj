@@ -157,13 +157,16 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="broadcastops.cpp" />
+    <ClCompile Include="functional\sigmoid.cpp" />
     <ClCompile Include="GradEngine\engine.cpp" />
     <ClCompile Include="GradFN\accumulategrad.cpp" />
     <ClCompile Include="GradFN\addbackward.cpp" />
     <ClCompile Include="GradFN\dividebackward.cpp" />
     <ClCompile Include="GradFN\mmbackward.cpp" />
+    <ClCompile Include="GradFN\mselossbackward.cpp" />
     <ClCompile Include="GradFN\multiplybackward.cpp" />
     <ClCompile Include="GradFN\negatebackward.cpp" />
+    <ClCompile Include="GradFN\sigmoidbackward.cpp" />
     <ClCompile Include="GradFN\subtractbackward.cpp" />
     <ClCompile Include="GradFN\transposebackward.cpp" />
     <ClCompile Include="layers\linear.cpp" />
@@ -185,16 +188,20 @@
   <ItemGroup>
     <ClInclude Include="broadcastops.h" />
     <ClInclude Include="cuda\cudaops.h" />
+    <ClInclude Include="functional\sigmoid.h" />
     <ClInclude Include="GradFN\accumulategrad.h" />
     <ClInclude Include="GradEngine\engine.h" />
     <ClInclude Include="GradFN\addbackward.h" />
     <ClInclude Include="GradFN\dividebackward.h" />
     <ClInclude Include="GradFN\mmbackward.h" />
+    <ClInclude Include="GradFN\mselossbackward.h" />
     <ClInclude Include="GradFN\negatebackward.h" />
+    <ClInclude Include="GradFN\sigmoidbackward.h" />
     <ClInclude Include="GradFN\subtractbackward.h" />
     <ClInclude Include="GradFN\transposebackward.h" />
     <ClInclude Include="layers\linear.h" />
     <ClInclude Include="loss\loss.h" />
+    <ClInclude Include="optim\optimizers.h" />
     <ClInclude Include="Util\idbroker.h" />
     <ClInclude Include="Util\logger.h" />
     <ClInclude Include="GradFN\node.h" />
@@ -217,6 +224,7 @@
     <CudaCompile Include="cuda\cudamultiply.cu" />
     <CudaCompile Include="cuda\cudafilltensor.cu" />
     <CudaCompile Include="cuda\cudanegate.cu" />
+    <CudaCompile Include="cuda\cudasigmoid.cu" />
     <CudaCompile Include="cuda\cudasubtract.cu" />
     <CudaCompile Include="cuda\cudasumtoshape.cu" />
   </ItemGroup>

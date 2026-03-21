@@ -32,6 +32,9 @@ namespace Inferno {
 			_parameters.push_back(&tensor);
 		}
 
+		void register_module(Module* module) {
+			_children.push_back(module);
+		}
 
 
 	private:

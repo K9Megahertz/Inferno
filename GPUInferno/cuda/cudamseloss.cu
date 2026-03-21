@@ -6,7 +6,9 @@ namespace Inferno {
     template<typename T>
     __global__ void reduce_sum_kernel(const T* input, T* output, size_t n)
     {
-        extern __shared__ T sdata[];
+        extern __shared__ unsigned char shared_raw[];
+        T* sdata = reinterpret_cast<T*>(shared_raw);
+
 
         unsigned int tid = threadIdx.x;
         unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -88,5 +90,46 @@ namespace Inferno {
             cudaFree(ptr);
         }
     }
+
+
+    // explicit instantiations
+    template void cuda_mse_loss<int, int, int>(
+        const int*, const int*, int*,        
+        size_t);
+
+    template void cuda_mse_loss<float, float, float>(
+        const float*, const float*, float*,        
+        size_t);
+
+    template void cuda_mse_loss<double, double, double>(
+        const double*, const double*, double*,
+        size_t);
+
+    template void cuda_mse_loss<int, float, float>(
+        const int*, const float*, float*,
+        size_t);
+
+    template void cuda_mse_loss<float, int, float>(
+        const float*, const int*, float*,
+        size_t);
+
+    template void cuda_mse_loss<int, double, double>(
+        const int*, const double*, double*,
+        size_t);
+
+    template void cuda_mse_loss<double, int, double>(
+        const double*, const int*, double*,
+        size_t);
+
+    template void cuda_mse_loss<float, double, double>(
+        const float*, const double*, double*,
+        size_t);
+
+    template void cuda_mse_loss<double, float, double>(
+        const double*, const float*, double*,
+        size_t);
+
+
+
 
 }

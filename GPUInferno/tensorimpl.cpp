@@ -376,11 +376,11 @@ namespace  Inferno {
 	}
 
 
-	int TensorImpl::id() {
+	int& TensorImpl::id() {
 		return m_id;
 	}
 
-	const int TensorImpl::id() const {
+	const int& TensorImpl::id() const {
 		return m_id;
 	}	
 

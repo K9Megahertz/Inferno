@@ -35,6 +35,12 @@ namespace Inferno {
 	template<typename AT, typename BT, typename RT>
 	void cuda_mse_loss(const AT* a, const BT* b, RT* out, size_t numel);
 
+	template<typename AT, typename RT>
+	void cuda_sigmoid(const AT* aptr, RT* outptr, size_t N);
+
+	template<typename AT, typename GT, typename RT>
+	void cuda_sigmoid_backward(const AT* yptr, const GT* gptr, RT* outptr, size_t n);
+
 	inline void check_cuda(cudaError_t err, const char* msg) {
 		if (err != cudaSuccess) {			
 			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, std::string(msg) + ": " + cudaGetErrorString(err));

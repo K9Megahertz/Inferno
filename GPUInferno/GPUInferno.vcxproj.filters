@@ -90,6 +90,15 @@
     <ClCompile Include="Util\idbroker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GradFN\mselossbackward.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="functional\sigmoid.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GradFN\sigmoidbackward.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="tensor.h">
@@ -176,6 +185,18 @@
     <ClInclude Include="loss\loss.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="GradFN\mselossbackward.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="functional\sigmoid.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GradFN\sigmoidbackward.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="optim\optimizers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="cuda\cudaadd.cu" />
@@ -187,5 +208,6 @@
     <CudaCompile Include="cuda\cudanegate.cu" />
     <CudaCompile Include="cuda\cudadivide.cu" />
     <CudaCompile Include="cuda\cudamseloss.cu" />
+    <CudaCompile Include="cuda\cudasigmoid.cu" />
   </ItemGroup>
 </Project>

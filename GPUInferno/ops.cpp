@@ -5,6 +5,7 @@
 #include "GradFN/dividebackward.h"
 #include "GradFN/negatebackward.h"
 #include "GradFN/mmbackward.h"
+#include "GradFN/mselossbackward.h"
 
 
 namespace Inferno {
@@ -717,6 +718,8 @@ namespace Inferno {
 		//impl->set_is_view(true);
 		//impl->set_base(base);
 		impl->name() = name;
+		impl->id() = Inferno::IDBroker::GenID();			
+		//Inferno::NodeTracker::addID(this->m_id, this->m_name);
 
 		out.device() = base.device();
 		SetImpl(out,impl);

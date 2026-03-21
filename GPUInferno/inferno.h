@@ -15,3 +15,9 @@
 
 #include "layers/module.h"
 #include "layers/linear.h"
+
+#include "loss/loss.h"
+
+#include "functional/sigmoid.h"
+
+#include "optim/optimizers.h"

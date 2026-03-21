@@ -16,7 +16,7 @@ namespace Inferno {
 
 
 	Tensor::~Tensor() { 
-		std::cout << "tensor bye: " << m_id << std::endl;
+		//std::cout << "tensor bye: " << m_id << std::endl;
 	}
 
 
@@ -485,7 +485,7 @@ namespace Inferno {
 
 		if (GetImpl(*this)->grad()) {
 			Tensor t = *GetImpl(*this)->grad();
-			Tensor blah = t.to(std::move(dst));
+			Tensor blah = t.to(std::move(dst));			
 			GetImpl(out)->set_grad(blah);
 
 		}
@@ -709,5 +709,10 @@ namespace Inferno {
 		return Tensor{};
 
 	}
+
+
+
+
+	
 
 }
