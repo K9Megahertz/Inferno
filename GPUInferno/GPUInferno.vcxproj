@@ -172,6 +172,7 @@
     <ClCompile Include="layers\linear.cpp" />
     <ClCompile Include="layers\module.h" />
     <ClCompile Include="ops.cpp" />
+    <ClCompile Include="tests\tests.cpp" />
     <ClCompile Include="Util\idbroker.cpp" />
     <ClCompile Include="Util\logger.cpp" />
     <ClCompile Include="GradFN\node.cpp" />
@@ -202,6 +203,12 @@
     <ClInclude Include="layers\linear.h" />
     <ClInclude Include="loss\loss.h" />
     <ClInclude Include="optim\optimizers.h" />
+    <ClInclude Include="tests\additiontests.h" />
+    <ClInclude Include="tests\divisiontests.h" />
+    <ClInclude Include="tests\multiplicationtests.h" />
+    <ClInclude Include="tests\subtractiontests.h" />
+    <ClInclude Include="tests\tests.h" />
+    <ClInclude Include="tests\testtools.h" />
     <ClInclude Include="Util\idbroker.h" />
     <ClInclude Include="Util\logger.h" />
     <ClInclude Include="GradFN\node.h" />

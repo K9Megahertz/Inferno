@@ -197,7 +197,7 @@ namespace Inferno {
 			auto bptr = implB->data_as_ptr<BT>();
 
 
-			Inferno::Tensor out(dtype_of_v<RT>, broadcast_shape, "add", A.device());
+			Inferno::Tensor out(dtype_of_v<RT>, broadcast_shape, "subtract", A.device());
 
 			auto implout = GetImpl(out);
 			auto optr = implout->data_as_ptr<RT>();
@@ -269,7 +269,7 @@ namespace Inferno {
 			auto bptr = implB->data_as_ptr<BT>();
 
 
-			Inferno::Tensor out(dtype_of_v<RT>, A.shape(), "add", A.device());
+			Inferno::Tensor out(dtype_of_v<RT>, broadcast_shape, "multiply", A.device());
 
 			auto implout = GetImpl(out);
 			auto optr = implout->data_as_ptr<RT>();
@@ -289,8 +289,8 @@ namespace Inferno {
 				// CUDA Code Path
 				////////////////////////////////////////////////////
 			case DeviceType::CUDA:
-				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CUDA Code path");
-				cuda_multiply<AT, BT, RT>(aptr, bptr, optr, out.numel());
+				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CUDA Code path");				
+				cuda_multiply<AT, BT, RT>(aptr, bptr, optr, A.shape(), B.shape(), out.shape(), out.numel());
 				break;
 
 			default:

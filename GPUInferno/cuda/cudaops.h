@@ -14,8 +14,8 @@ namespace Inferno {
 	template<typename AT, typename BT, typename RT>
 	void cuda_subtract(const AT* aptr, const BT* bptr, RT* outptr, const std::vector<size_t>& ashape, const std::vector<size_t>& bshape, const std::vector<size_t>& out_shape, size_t out_numel);
 
-	template<typename AT, typename BT, typename RT>
-	void cuda_multiply(const AT* aptr, const BT* bptr, RT* outptr, size_t N);	
+	template<typename AT, typename BT, typename RT>	
+	void cuda_multiply(const AT* aptr, const BT* bptr, RT* outptr, const std::vector<size_t>& ashape, const std::vector<size_t>& bshape, const std::vector<size_t>& out_shape, size_t out_numel);
 
 	template<typename AT, typename BT, typename RT>
 	void cuda_divide(const AT* aptr, const BT* bptr, RT* outptr, const std::vector<size_t>& ashape, const std::vector<size_t>& bshape, const std::vector<size_t>& out_shape, size_t out_numel);

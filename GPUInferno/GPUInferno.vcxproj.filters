@@ -99,6 +99,9 @@
     <ClCompile Include="GradFN\sigmoidbackward.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="tests\tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="tensor.h">
@@ -195,6 +198,24 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="optim\optimizers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tests\testtools.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tests\tests.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tests\additiontests.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tests\subtractiontests.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tests\multiplicationtests.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tests\divisiontests.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

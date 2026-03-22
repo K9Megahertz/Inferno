@@ -1,4 +1,8 @@
 #include "inferno.h"
+#include "tests/tests.h"
+
+
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -45,12 +49,12 @@ public:
 	Inferno::Tensor forward(Inferno::Tensor& input) {
 
 		Inferno::Tensor out = fc1.forward(input);
-		std::cout << out.to(Inferno::Device::cpu());
+		//std::cout << out.to(Inferno::Device::cpu());
 		out = act1.forward(out);
-		//out = fc2.forward(out);
-		//out = act2.forward(out);
-		//out = fc3.forward(out);
-		//out = act3.forward(out);
+		out = fc2.forward(out);
+		out = act2.forward(out);
+		out = fc3.forward(out);
+		out = act3.forward(out);
 		return out;
 	}
 
@@ -82,6 +86,11 @@ int main() {
 	Inferno::RandomGenerator::initializeWithSeed(42);
 
 	
+
+	RunTests();
+	
+
+
 
 	//Inferno::Tensor a(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(10000000, -1.0f, 1.0f), { 10000000 }, "input", Inferno::Device::cpu());
 	//Inferno::Tensor b(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(10000000, -1.0f, 1.0f), { 10000000 }, "input", Inferno::Device::cpu());
@@ -142,16 +151,16 @@ int main() {
   	//Inferno::Tensor a(Inferno::DType::Float32, std::vector<float> {1, 2, 3, 4, 5 }, { 5 }, "a", Inferno::Device::cuda(0));
 	
 	//Inferno::Tensor input(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(784, -1.0f, 1.0f), { 784 }, "input", Inferno::Device::cpu());
-	//Inferno::Tensor input(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(784, -1.0f, 1.0f), { 784 }, "input", Inferno::Device::cuda(0));
+	Inferno::Tensor input(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(78400, -1.0f, 1.0f), { 784 }, "input", Inferno::Device::cuda(0));
 
 
 	//Inferno::Tensor input(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(10, -1.0f, 1.0f), { 10 }, "input", Inferno::Device::cpu());
 	//Inferno::Tensor input(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(10, -1.0f, 1.0f), { 10 }, "input", Inferno::Device::cuda(0));
-	Inferno::Tensor input(Inferno::DType::Float32, std::vector<float>{0.5}, {1}, "input", Inferno::Device::cuda(0));
+	//Inferno::Tensor input(Inferno::DType::Float32, std::vector<float>{0.5}, {1}, "input", Inferno::Device::cuda(0));
 	
 	//Inferno::Tensor target(Inferno::DType::Float32, std::vector<float> {1, 0, 1, 0, 1, 0, 1, 0, 1, 0 }, { 10 }, "target", Inferno::Device::cpu());
-	//Inferno::Tensor target(Inferno::DType::Float32, std::vector<float> {1, 0, 1, 0, 1, 0, 1, 0, 1, 0 }, { 10 }, "target", Inferno::Device::cuda(0));
-	Inferno::Tensor target(Inferno::DType::Float32, std::vector<float> {1}, { 1 }, "target", Inferno::Device::cuda(0));
+	Inferno::Tensor target(Inferno::DType::Float32, std::vector<float> {1, 0, 1, 0, 1, 0, 1, 0, 1, 0 }, { 10 }, "target", Inferno::Device::cuda(0));
+	//Inferno::Tensor target(Inferno::DType::Float32, std::vector<float> {1}, { 1 }, "target", Inferno::Device::cuda(0));
 
 	//Inferno::Tensor b(Inferno::DType::Float32, std::vector<float> {1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0}, { 5,6 }, "b", Inferno::Device::cpu());
 
@@ -163,42 +172,42 @@ int main() {
 	//a2.shape() = { 1,2,3,4,5 };
 
 
-	//std::vector<int> layers({ 784,512,256,10 });
+	std::vector<int> layers({ 784,512,256,10 });
 	//std::vector<int> layers({ 10,10,10,10 });
-	std::vector<int> layers({ 1,1,1,1 });
+	//std::vector<int> layers({ 1,1,1,1 });
 
 	MyModel model(layers);
 
 	Inferno::MSELoss loss_fn;
 
 	auto params = model.parameters();
-	Inferno::OptimizerSGD optimizer(params, 0.0001f);
+	Inferno::OptimizerSGD optimizer(params, 0.001f);
 
 	Inferno::Timer t1("matmul");
 	
-	for (int i = 0; i < 10000; i++) {
+	for (int i = 0; i < 30000; i++) {
 		
 		t1.start();
 
 		cudaDeviceSynchronize();
 
 		Inferno::Tensor prediction = model.forward(input);
-		prediction.backward();
+		//prediction.backward();
 
 		Inferno::Tensor loss = loss_fn(prediction, target);
 
-		std::cout << " **** Prediction ****" << std::endl;
-		std::cout << prediction.to(Inferno::Device::cpu()) << std::endl;
+		//std::cout << " **** Prediction ****" << std::endl;
+		//std::cout << prediction.to(Inferno::Device::cpu()) << std::endl;
 
 
-		std::cout << " **** Input Grad before backward ****" << std::endl;
-		std::cout << input.to(Inferno::Device::cpu()) << std::endl;
+		//std::cout << " **** Input Grad before backward ****" << std::endl;
+		//std::cout << input.to(Inferno::Device::cpu()) << std::endl;
 		
 
 		loss.backward();
 
-		std::cout << " **** Input Grad after backward ****" << std::endl;
-		std::cout << input.to(Inferno::Device::cpu()) << std::endl;
+		//std::cout << " **** Input Grad after backward ****" << std::endl;
+		//std::cout << input.to(Inferno::Device::cpu()) << std::endl;
 
 		//std::cout << model.fc1.m_weights << std::endl;
 		//std::cout << model.fc1.m_biases << std::endl;
@@ -218,7 +227,13 @@ int main() {
 
 		std::cout << std::fixed << "Iter: "  << i << "  total took: " << std::setprecision(3) << t1.elapsed_ms() << " ms  Loss: " << std::setprecision(8) << lossp.item<float>()	<< std::endl;
 		//std::cout << loss << std::endl;
+
+		if (i >= 29999) {
+			std::cout << prediction.to(Inferno::Device::cpu()) << std::endl;
+		}
 	}
+
+	
 	//std::cout << a << std::endl;
 	//std::cout << b << std::endl;
 

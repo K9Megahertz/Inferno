@@ -34,7 +34,7 @@ namespace Inferno {
             b_offset += b_idx * b_strides[d];
         }
 
-        outptr[linear] = static_cast<RT>(aptr[a_offset]) + static_cast<RT>(bptr[b_offset]);
+        outptr[linear] = static_cast<RT>(aptr[a_offset]) - static_cast<RT>(bptr[b_offset]);
     }
 
     template<typename AT, typename BT, typename RT>
