@@ -218,6 +218,12 @@
     <ClInclude Include="tests\divisiontests.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="tests\sigmoidtests.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tests\mselosstests.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="cuda\cudaadd.cu" />

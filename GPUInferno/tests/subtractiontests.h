@@ -86,6 +86,15 @@ void RunSubtractionTests(Inferno::Device device) {
         Inferno::Tensor actual = a - b;
 
         ExpectTensorEq("sub float32 simple", actual, expected, stats);
+
+        actual.backward();
+
+        Inferno::Tensor expected_a_grad(Inferno::DType::Float32,std::vector<float>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1},{ 10 },"expected_a_grad",device);
+
+        Inferno::Tensor expected_b_grad(Inferno::DType::Float32,std::vector<float>{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1},{ 10 },"expected_b_grad",device);
+
+        ExpectTensorEq("Subtraction grad a", *GetImpl(a)->grad(), expected_a_grad, stats);
+        ExpectTensorEq("Subtraction grad b", *GetImpl(b)->grad(), expected_b_grad, stats);
     }
 
     {

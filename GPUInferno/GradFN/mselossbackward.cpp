@@ -11,6 +11,8 @@ namespace Inferno {
 
 	void MSELossBackward::backward() {
 
+		NoGradGuard guard;
+
         Tensor g_out = Engine::grad_in(this, 0); // usually shape {1}
 
         dispatchTwo(m_A.dtype(), m_B.dtype(), [&](auto TA, auto TB) {

@@ -6,11 +6,16 @@
 #include "subtractiontests.h"
 #include "multiplicationtests.h"
 #include "divisiontests.h"
+#include "sigmoidtests.h"
+#include "mselosstests.h"
+
 
 void RunAdditionTests(Inferno::Device device);
 void RunSubtractionTests(Inferno::Device device);
 void RunMultiplicationTests(Inferno::Device device);
 void RunDivisionTests(Inferno::Device device);
+void RunSigmoidTests(Inferno::Device device);
+void RunMSELossTests(Inferno::Device device);
 
 
 void RunTests() {
@@ -25,6 +30,12 @@ void RunTests() {
 
     RunDivisionTests(Inferno::Device::cpu());
     RunDivisionTests(Inferno::Device::cuda(0));
+
+    RunSigmoidTests(Inferno::Device::cpu());
+    RunSigmoidTests(Inferno::Device::cuda(0));
+
+    RunMSELossTests(Inferno::Device::cpu());
+    RunMSELossTests(Inferno::Device::cuda(0));
 
 
 }

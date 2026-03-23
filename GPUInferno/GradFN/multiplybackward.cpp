@@ -10,6 +10,8 @@ namespace Inferno {
 	}
 
 	void MultiplyBackward::backward() {
+
+		NoGradGuard guard;
 		// upstream gradient dL/d(output)
 		Tensor g_out = Engine::grad_in(this, 0);
 

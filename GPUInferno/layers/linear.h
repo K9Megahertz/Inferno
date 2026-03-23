@@ -16,6 +16,10 @@ namespace  Inferno {
 		Tensor m_weights;
 		Tensor m_biases;
 
+		Tensor operator()(Tensor& input) {
+			return forward(input);
+		}
+
 	private:
 
 		

@@ -167,7 +167,7 @@ namespace Inferno {
 		
 		}
 
-		~Tensor();
+		~Tensor() = default;
 
 		//Device defs
 		Device& device();

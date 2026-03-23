@@ -15,6 +15,12 @@ namespace  Inferno {
 		Sigmoid(Device device = Device::cpu(), DType dtype = DType::Float32) {}
 		Tensor forward(const Tensor& A);
 
+
+		Tensor operator()(Tensor& input) {
+			return forward(input);
+		}
+
+
 	private:
 		
 

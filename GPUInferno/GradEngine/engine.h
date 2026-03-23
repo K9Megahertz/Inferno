@@ -9,6 +9,23 @@
 
 namespace Inferno {
 
+    extern bool grad_enabled;
+
+    class NoGradGuard {
+    public:
+        NoGradGuard() {
+            m_prev = Inferno::grad_enabled;
+            Inferno::grad_enabled = false;
+        }
+
+        ~NoGradGuard() {
+            Inferno::grad_enabled = m_prev;
+        }
+
+    private:
+        bool m_prev;
+    };
+
     struct Edge {
         Node* node;
         int slot;

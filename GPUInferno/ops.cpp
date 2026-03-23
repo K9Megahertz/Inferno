@@ -77,8 +77,9 @@ namespace Inferno {
 				exit(1);
 			}
 
-
-			implout->gradfn() = std::make_shared<AddBackward>(A, B);
+			if (Inferno::grad_enabled) {
+				implout->gradfn() = std::make_shared<AddBackward>(A, B);
+			}
 
 
 			return out;
@@ -97,7 +98,7 @@ namespace Inferno {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	Tensor add_nograd(const Tensor& A, const Tensor& B) {
+	/*Tensor add_nograd(const Tensor& A, const Tensor& B) {
 
 
 		if (A.device() != B.device()) {
@@ -158,7 +159,7 @@ namespace Inferno {
 
 			return out;
 			});
-	}
+	}*/
 
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -227,8 +228,9 @@ namespace Inferno {
 				exit(1);
 			}
 
-
-			implout->gradfn() = std::make_shared<SubtractBackward>(A, B);
+			if (Inferno::grad_enabled) {
+				implout->gradfn() = std::make_shared<SubtractBackward>(A, B);
+			}
 
 
 			return out;
@@ -298,8 +300,9 @@ namespace Inferno {
 				exit(1);
 			}
 
-
-			implout->gradfn() = std::make_shared<MultiplyBackward>(A, B);
+			if (Inferno::grad_enabled) {
+				implout->gradfn() = std::make_shared<MultiplyBackward>(A, B);
+			}
 
 
 			return out;
@@ -377,8 +380,9 @@ namespace Inferno {
 				exit(1);
 			}
 
-
-			implout->gradfn() = std::make_shared<DivideBackward>(A, B);
+			if (Inferno::grad_enabled) {
+				implout->gradfn() = std::make_shared<DivideBackward>(A, B);
+			}
 
 
 			return out;
@@ -438,9 +442,9 @@ namespace Inferno {
 				exit(1);
 			}
 
-
-			implout->gradfn() = std::make_shared<NegateBackward>(A);
-
+			if (Inferno::grad_enabled) {
+				implout->gradfn() = std::make_shared<NegateBackward>(A);
+			}
 
 			return out;
 			});
@@ -491,14 +495,12 @@ namespace Inferno {
 			
 		out.strides() = out.calculate_strides(out.shape());
 
-
-		//bool req = GetImpl(A)->requires_grad() || GetImpl(B)->requires_grad();
-		//GetImpl(out)->set_requires_grad(req);
-
-		//if (req) {
-		GetImpl(out)->gradfn() = std::make_shared<MMBackward>(A, B);
+		
+		if (Inferno::grad_enabled) {
+			GetImpl(out)->gradfn() = std::make_shared<MMBackward>(A, B);
+		}
 			
-		//}
+		
 		return out;
 
 	}

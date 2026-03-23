@@ -14,7 +14,7 @@ namespace Inferno {
         template <typename AT, typename BT>
         void cpu_step_impl(AT* dptr, BT* gptr, size_t N) {
             for (size_t i = 0; i < N; i++) {
-                dptr[i] = static_cast<AT>( static_cast<double>(dptr[i]) - static_cast<double>(lr) * static_cast<double>(gptr[i]) );
+                dptr[i] = static_cast<AT>(static_cast<double>(dptr[i]) - static_cast<double>(lr) * static_cast<double>(gptr[i]));
             }
         }
 
@@ -36,9 +36,9 @@ namespace Inferno {
                 if (p->shape() != grad->shape()) {
                     Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "OptimizerSGD: param/grad shape mismatch");
                     exit(1);
-                }                
+                }
 
-                
+
 
                 dispatchTwo(p->dtype(), grad->dtype(), [&](auto TA, auto TB) {
                     using AT = typename decltype(TA)::type;
@@ -50,21 +50,40 @@ namespace Inferno {
 
                     size_t count = p->numel();
 
-                    if (p->device().is_cpu()) {
-                        cpu_step_impl<AT, BT>(dptr, gptr, count);
+
+
+                    switch (p->device().m_type) {
+
+                        ////////////////////////////////////////////////////
+                        // CPU Code Path
+                        ////////////////////////////////////////////////////
+                    case DeviceType::CPU:
+                        Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CPU Code path");
+                        cpu_step_impl(dptr, gptr, count);
+                        break;
+
+                        ////////////////////////////////////////////////////
+                        // CUDA Code Path
+                        ////////////////////////////////////////////////////
+                    case DeviceType::CUDA:
+                        Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CUDA Code path");
+                        cuda_step_impl(dptr, gptr, count, lr);
+                        break;
+
+                    default:
+                        Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "Invalid device type");
+                        exit(1);
                     }
-                    else {
-                        cuda_step_impl<AT, BT>(dptr, gptr, count, lr);
-                        //Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "OptimizerSGD CUDA path not implemented");
-                        //exit(1);
-                    }
+
                     });
+
+                //std::cout << *p << std::endl;
             }
         }
 
         void zero_grad() {
             for (auto& p : params) {
-                p->grad() = nullptr;              
+                p->grad() = nullptr;
             }
         }
     };

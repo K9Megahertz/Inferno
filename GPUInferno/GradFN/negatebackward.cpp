@@ -10,6 +10,9 @@ namespace Inferno {
 	}
 
 	void NegateBackward::backward() {
+
+		NoGradGuard guard;
+
 		// upstream gradient dL/d(output)
 		Tensor g_out = Engine::grad_in(this, 0);
 

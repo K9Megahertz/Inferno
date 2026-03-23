@@ -1,7 +1,110 @@
 #include "inferno.h"
 #include "tests/tests.h"
 
+//Inferno::Device device = Inferno::Device::cpu();
+Inferno::Device device = Inferno::Device::cuda(0);
 
+
+
+// helper: read big-endian int
+uint32_t read_uint32(std::ifstream& f) {
+	uint32_t val = 0;
+	f.read(reinterpret_cast<char*>(&val), 4);
+	return ((val & 0xFF000000) >> 24) |
+		((val & 0x00FF0000) >> 8) |
+		((val & 0x0000FF00) << 8) |
+		((val & 0x000000FF) << 24);
+}
+
+void LoadSampleData(
+	const std::string& image_file,
+	const std::string& label_file,
+	std::vector<std::vector<float>>& inputs,
+	std::vector<std::vector<float>>& targets)
+{
+	std::ifstream img(image_file, std::ios::binary);
+	std::ifstream lbl(label_file, std::ios::binary);
+
+	if (!img || !lbl) {
+		std::cerr << "Failed to open MNIST files\n";
+		exit(1);
+	}
+
+	// --- Read image header ---
+	uint32_t img_magic = read_uint32(img);
+	uint32_t num_images = read_uint32(img);
+	uint32_t rows = read_uint32(img);
+	uint32_t cols = read_uint32(img);
+
+	if (img_magic != 2051) {
+		std::cerr << "Invalid image file\n";
+		exit(1);
+	}
+
+	// --- Read label header ---
+	uint32_t lbl_magic = read_uint32(lbl);
+	uint32_t num_labels = read_uint32(lbl);
+
+	if (lbl_magic != 2049) {
+		std::cerr << "Invalid label file\n";
+		exit(1);
+	}
+
+	if (num_images != num_labels) {
+		std::cerr << "Image/label count mismatch\n";
+		exit(1);
+	}
+
+	const size_t image_size = rows * cols; // should be 784
+
+	inputs.resize(num_images);
+	targets.resize(num_images);
+
+	// --- Read data ---
+	for (size_t i = 0; i < num_images; ++i) {
+
+		// --- INPUTS ---
+		inputs[i].resize(image_size);
+
+		for (size_t j = 0; j < image_size; ++j) {
+			unsigned char pixel = 0;
+			img.read(reinterpret_cast<char*>(&pixel), 1);
+
+			// normalize to [0,1]
+			inputs[i][j] = static_cast<float>(pixel) / 255.0f;
+		}
+
+		// --- TARGETS (one-hot) ---
+		unsigned char label = 0;
+		lbl.read(reinterpret_cast<char*>(&label), 1);
+
+		targets[i].assign(10, 0.0f);
+		targets[i][label] = 1.0f;
+	}
+}
+
+void GenerateSampleData(std::vector<std::vector<float>>& inputs, std::vector<std::vector<float>>& targets) {
+
+	const size_t num_samples = inputs.size();
+
+	// Ensure targets matches inputs size
+	targets.resize(num_samples);
+
+	for (size_t i = 0; i < num_samples; ++i) {
+
+		// --- INPUTS ---
+		inputs[i].resize(784);
+		for (size_t j = 0; j < 784; ++j) {
+			inputs[i][j] = Inferno::RandomGenerator::generateRandomFloat(0.0f, 1.0f);
+		}
+
+		// --- TARGETS (one-hot) ---
+		targets[i].assign(10, 0.0f);
+
+		int cls = Inferno::RandomGenerator::generateRandomInt(0, 9);
+		targets[i][cls] = 1.0f;
+	}
+}
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -20,23 +123,19 @@ class MyModel : public Inferno::Module {
 public:
 
 
-	MyModel(std::vector<int>& layers) : fc1(layers[0], layers[1], Inferno::Device::cuda(0)),
-										fc2(layers[1], layers[2], Inferno::Device::cuda(0)),
-										fc3(layers[2], layers[3], Inferno::Device::cuda(0)) {
-
-	/*MyModel(std::vector<int>&layers) : fc1(layers[0], layers[1], Inferno::Device::cpu()),
-									   fc2(layers[1], layers[2], Inferno::Device::cpu()),
-										fc3(layers[2], layers[3], Inferno::Device::cpu()) {*/
+	MyModel(std::vector<int>&layers) : fc1(layers[0], layers[1], device),
+									   fc2(layers[1], layers[2], device),
+									   fc3(layers[2], layers[3], device) {
 
 
 		//TODO: add these to the constructors
-		act1 = Inferno::Sigmoid(Inferno::Device::cuda(0));
-		act2 = Inferno::Sigmoid(Inferno::Device::cuda(0));
-		act3 = Inferno::Sigmoid(Inferno::Device::cuda(0));
+		//act1 = Inferno::Sigmoid(Inferno::Device::cuda(0));
+		//act2 = Inferno::Sigmoid(Inferno::Device::cuda(0));
+		//act3 = Inferno::Sigmoid(Inferno::Device::cuda(0));
 
-		//act1 = Inferno::Sigmoid(Inferno::Device::cpu());
-		//act2 = Inferno::Sigmoid(Inferno::Device::cpu());
-		//act3 = Inferno::Sigmoid(Inferno::Device::cpu());
+		act1 = Inferno::Sigmoid(device);
+		act2 = Inferno::Sigmoid(device);
+		act3 = Inferno::Sigmoid(device);
 		this->register_module(&fc1);
 		this->register_module(&fc2);
 		this->register_module(&fc3);
@@ -48,8 +147,7 @@ public:
 
 	Inferno::Tensor forward(Inferno::Tensor& input) {
 
-		Inferno::Tensor out = fc1.forward(input);
-		//std::cout << out.to(Inferno::Device::cpu());
+		Inferno::Tensor out = fc1.forward(input);		
 		out = act1.forward(out);
 		out = fc2.forward(out);
 		out = act2.forward(out);
@@ -87,79 +185,22 @@ int main() {
 
 	
 
-	RunTests();
+	//RunTests();
 	
 
+	std::cout << "break";
 
-
-	//Inferno::Tensor a(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(10000000, -1.0f, 1.0f), { 10000000 }, "input", Inferno::Device::cpu());
-	//Inferno::Tensor b(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(10000000, -1.0f, 1.0f), { 10000000 }, "input", Inferno::Device::cpu());
-	//Inferno::Tensor a(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(1000000000, -1.0f, 1.0f), { 1000000000 }, "input", Inferno::Device::cuda(0));
-	//Inferno::Tensor b(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(1000000000, -1.0f, 1.0f), { 1000000000 }, "input", Inferno::Device::cuda(0));
-	//Inferno::Tensor a(Inferno::DType::Float32, std::vector<float>({ 1,2,3,4 }), { 2,2 }, "a", Inferno::Device::cuda(0));
-	//Inferno::Tensor b(Inferno::DType::Float32, std::vector<float>({ 4,3,2,1 }), { 2,2 }, "b", Inferno::Device::cuda(0));	
-	/*Inferno::Tensor a(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(20, -1.0f, 1.0f), { 4,5 }, "a", Inferno::Device::cpu());
-	Inferno::Tensor b(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(20, -1.0f, 1.0f), { 4,5 }, "b", Inferno::Device::cpu());
-	Inferno::Tensor c(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(20, -1.0f, 1.0f), { 4,5 }, "c", Inferno::Device::cpu());
-	Inferno::Tensor d(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(20, -1.0f, 1.0f), { 4,5 }, "d", Inferno::Device::cpu());
-	*/
-	/*Inferno::Tensor a(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(20, -1.0f, 1.0f), { 4,5 }, "a", Inferno::Device::cuda(0));
-	Inferno::Tensor b(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(20, -1.0f, 1.0f), { 4,5 }, "b", Inferno::Device::cuda(0));
-	Inferno::Tensor c(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(20, -1.0f, 1.0f), { 4,5 }, "c", Inferno::Device::cuda(0));
-	Inferno::Tensor d(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(20, -1.0f, 1.0f), { 4,5 }, "d", Inferno::Device::cuda(0));
-	*/
-
-
-	//Inferno::Tensor a(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(4194304, -1.0f, 1.0f), { 2048,2048 }, "a", Inferno::Device::cpu());
-	//Inferno::Tensor b(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(4194304, -1.0f, 1.0f), { 2048,2048 }, "b", Inferno::Device::cpu());
-
-	//Inferno::Tensor a(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(67108864, -1.0f, 1.0f), { 8192,8192 }, "a", Inferno::Device::cuda(0));
-	//Inferno::Tensor b(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(67108864, -1.0f, 1.0f), { 8192,8192 }, "b", Inferno::Device::cuda(0));
 	
-	//Inferno::Tensor a(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(67108864, -1.0f, 1.0f), { 8192,8192 }, "a", Inferno::Device::cpu());
-	//Inferno::Tensor b(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(67108864, -1.0f, 1.0f), { 8192,8192 }, "b", Inferno::Device::cpu());
-
-	//Inferno::Tensor a(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(15, -1.0f, 1.0f), {   3,5 }, "a", Inferno::Device::cpu());
-	//Inferno::Tensor b(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(60, -1.0f, 1.0f), { 3,5,4 }, "b", Inferno::Device::cpu());
-
-	//Inferno::Tensor a(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(15, -1.0f, 1.0f), { 3,5 }, "a", Inferno::Device::cuda(0));
-	//Inferno::Tensor b(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(60, -1.0f, 1.0f), { 3,5,4 }, "b", Inferno::Device::cuda(0));
-
-	//Inferno::Tensor a(Inferno::DType::Int32, std::vector<int>{ 1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8 }, { 2,2,3,4 }, "a", Inferno::Device::cpu());
-	//Inferno::Tensor b(Inferno::DType::Int32, std::vector<int>{ 9,8,7,6,5,4,3,2,1,0,9,8,7,6,5,4,3,2,1,0 }, { 4,5 }, "b", Inferno::Device::cpu());
-
-	//Inferno::Tensor a(Inferno::DType::Int32, std::vector<int>{ 1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8 }, { 2,2,3,4 }, "a", Inferno::Device::cuda(0));
-	//Inferno::Tensor b(Inferno::DType::Int32, std::vector<int>{ 9,8,7,6,5,4,3,2,1,0,9,8,7,6,5,4,3,2,1,0 }, { 4,5 }, "b", Inferno::Device::cuda(0));
-
-	//Inferno::Tensor a(Inferno::DType::Int32, std::vector<int> {1,2,3,1,2,3,1,2,3}, { 3,3 }, "a", Inferno::Device::cuda(0));
-	//Inferno::Tensor b(Inferno::DType::Int32, std::vector<int> {1,2,3,1,2,3,1,2,3}, { 3,3 }, "b", Inferno::Device::cuda(0));
-
-	//Inferno::Tensor a(Inferno::DType::Int32, std::vector<int> {1, 2, 3, 1, 2, 3, 1, 2, 3}, { 3,3 }, "a", Inferno::Device::cpu());
-	//Inferno::Tensor b(Inferno::DType::Int32, std::vector<int> {1, 2, 3, 1, 2, 3, 1, 2, 3}, { 3,3 }, "b", Inferno::Device::cpu());
-
-	//Inferno::Tensor a(Inferno::DType::Int32, std::vector<int> {6}, { 1 }, "a", Inferno::Device::cpu());
-	//Inferno::Tensor b(Inferno::DType::Int32, std::vector<int> {3}, { 1 }, "b", Inferno::Device::cpu());
-
-	//Inferno::Tensor a(Inferno::DType::Float32, std::vector<float> {1, 2, 3, 1, 2, 3, 1, 2, 3}, { 3,3 }, "a", Inferno::Device::cuda(0));
-	//Inferno::Tensor b(Inferno::DType::Float32, std::vector<float> {1, 2, 3, 1, 2, 3, 1, 2, 3}, { 3,3 }, "b", Inferno::Device::cuda(0));
-
-	//Inferno::Tensor a(Inferno::DType::Int32, std::vector<int> {6,2,1}, { 3 }, "a", Inferno::Device::cpu());
-	//Inferno::Tensor b(Inferno::DType::Int32, std::vector<int> {3,2,1}, { 3,1 }, "b", Inferno::Device::cpu());
-
-
-
-  	//Inferno::Tensor a(Inferno::DType::Float32, std::vector<float> {1, 2, 3, 4, 5 }, { 5 }, "a", Inferno::Device::cuda(0));
 	
-	//Inferno::Tensor input(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(784, -1.0f, 1.0f), { 784 }, "input", Inferno::Device::cpu());
-	Inferno::Tensor input(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(78400, -1.0f, 1.0f), { 784 }, "input", Inferno::Device::cuda(0));
-
-
-	//Inferno::Tensor input(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(10, -1.0f, 1.0f), { 10 }, "input", Inferno::Device::cpu());
-	//Inferno::Tensor input(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(10, -1.0f, 1.0f), { 10 }, "input", Inferno::Device::cuda(0));
+	Inferno::Tensor input(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(784, -1.0f, 1.0f), { 784 }, "input", device);
+	
+	//Inferno::Tensor input(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(10, -1.0f, 1.0f), { 10 }, "input", device);	
 	//Inferno::Tensor input(Inferno::DType::Float32, std::vector<float>{0.5}, {1}, "input", Inferno::Device::cuda(0));
 	
 	//Inferno::Tensor target(Inferno::DType::Float32, std::vector<float> {1, 0, 1, 0, 1, 0, 1, 0, 1, 0 }, { 10 }, "target", Inferno::Device::cpu());
-	Inferno::Tensor target(Inferno::DType::Float32, std::vector<float> {1, 0, 1, 0, 1, 0, 1, 0, 1, 0 }, { 10 }, "target", Inferno::Device::cuda(0));
+	Inferno::Tensor target(Inferno::DType::Float32, std::vector<float> {1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, { 10 }, "target", device);
+	//Inferno::Tensor target(Inferno::DType::Float32, std::vector<float> {1, 0, 1, 0, 1, 0, 1, 0, 1, 0 }, { 10 }, "target", Inferno::Device::cuda(0));
+	//Inferno::Tensor target(Inferno::DType::Float32, std::vector<float> {0, 0, 0, 0, 0, 0, 0, 0, 0, 1 }, { 10 }, "target", Inferno::Device::cuda(0));
 	//Inferno::Tensor target(Inferno::DType::Float32, std::vector<float> {1}, { 1 }, "target", Inferno::Device::cuda(0));
 
 	//Inferno::Tensor b(Inferno::DType::Float32, std::vector<float> {1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0}, { 5,6 }, "b", Inferno::Device::cpu());
@@ -172,8 +213,18 @@ int main() {
 	//a2.shape() = { 1,2,3,4,5 };
 
 
+	std::vector<std::vector<float>> inputs(50000, std::vector<float>(784));
+	std::vector<std::vector<float>> targets(50000, std::vector<float>(10));
+
+	//GenerateSampleData(inputs, targets);
+
+	LoadSampleData("train-images.idx3-ubyte", "train-labels.idx1-ubyte", inputs, targets);
+	
+
+
+
 	std::vector<int> layers({ 784,512,256,10 });
-	//std::vector<int> layers({ 10,10,10,10 });
+	//std::vector<int> layers({ 100,80,40,10});
 	//std::vector<int> layers({ 1,1,1,1 });
 
 	MyModel model(layers);
@@ -184,84 +235,75 @@ int main() {
 	Inferno::OptimizerSGD optimizer(params, 0.001f);
 
 	Inferno::Timer t1("matmul");
-	
-	for (int i = 0; i < 30000; i++) {
-		
-		t1.start();
 
-		cudaDeviceSynchronize();
+	int epochs = 60;
+	int loopcount = 60000;
+	for (int e = 0; e < epochs; e++) {
+		for (int i = 0; i < loopcount; i++) {
 
-		Inferno::Tensor prediction = model.forward(input);
-		//prediction.backward();
+			t1.start();
 
-		Inferno::Tensor loss = loss_fn(prediction, target);
-
-		//std::cout << " **** Prediction ****" << std::endl;
-		//std::cout << prediction.to(Inferno::Device::cpu()) << std::endl;
+			cudaDeviceSynchronize();
 
 
-		//std::cout << " **** Input Grad before backward ****" << std::endl;
-		//std::cout << input.to(Inferno::Device::cpu()) << std::endl;
-		
+			Inferno::Tensor in(Inferno::DType::Float32, inputs[i], { 784 }, "input", device);
+			Inferno::Tensor prediction = model.forward(in);
 
-		loss.backward();
+			Inferno::Tensor targ(Inferno::DType::Float32, targets[i], { 10 }, "target", device);
+			Inferno::Tensor loss = loss_fn(prediction, targ);
 
-		//std::cout << " **** Input Grad after backward ****" << std::endl;
-		//std::cout << input.to(Inferno::Device::cpu()) << std::endl;
-
-		//std::cout << model.fc1.m_weights << std::endl;
-		//std::cout << model.fc1.m_biases << std::endl;
-		//std::cout << model.fc2.m_weights << std::endl;
-		//std::cout << model.fc2.m_biases << std::endl;
-		//std::cout << model.fc3.m_weights << std::endl;
-		//std::cout << model.fc3.m_biases << std::endl;
-		
-
-		optimizer.step();
-		optimizer.zero_grad();
+			//std::cout << " **** Prediction ****" << std::endl;
+			//std::cout << prediction.to(Inferno::Device::cpu()) << std::endl;
 
 
-		t1.stop();
+			//std::cout << " **** Input Grad before backward ****" << std::endl;
+			//std::cout << input.to(Inferno::Device::cpu()) << std::endl;
 
-		Inferno::Tensor lossp = loss.to(Inferno::Device::cpu());
 
-		std::cout << std::fixed << "Iter: "  << i << "  total took: " << std::setprecision(3) << t1.elapsed_ms() << " ms  Loss: " << std::setprecision(8) << lossp.item<float>()	<< std::endl;
-		//std::cout << loss << std::endl;
+			loss.backward();
 
-		if (i >= 29999) {
-			std::cout << prediction.to(Inferno::Device::cpu()) << std::endl;
+			//std::cout << input.to(Inferno::Device::cpu()) << std::endl;
+
+			//std::cout << " **** Input Grad after backward ****" << std::endl;
+			//std::cout << input.to(Inferno::Device::cpu()) << std::endl;
+
+			//std::cout << model.fc1.m_weights << std::endl;
+			//std::cout << model.fc1.m_biases << std::endl;
+			//std::cout << model.fc2.m_weights << std::endl;
+			//std::cout << model.fc2.m_biases << std::endl;
+			//std::cout << model.fc3.m_weights << std::endl;
+			//std::cout << model.fc3.m_biases << std::endl;
+
+
+			optimizer.step();
+			optimizer.zero_grad();
+
+
+			t1.stop();
+
+			Inferno::Tensor lossp = loss.to(Inferno::Device::cpu());
+
+			std::cout << std::fixed << "Epoch: " << e << " Iter: " << i << "  total took: " << std::setprecision(3) << t1.elapsed_ms() << " ms  Loss: " << std::setprecision(8) << lossp.item<float>() << std::endl;
+			//std::cout << loss << std::endl;
+			//std::cout << prediction.to(Inferno::Device::cpu()) << std::endl;
+
+			//if (i % 1000 == 0 || i < 10) {
+	//			std::cout << prediction.to(Inferno::Device::cpu()) << std::endl;
+				//std::cout << target.to(Inferno::Device::cpu()) << std::endl;
+			//}
+
+			if (i >= loopcount - 1) {
+				std::cout << prediction.to(Inferno::Device::cpu()) << std::endl;
+			}
 		}
 	}
-
-	
-	//std::cout << a << std::endl;
-	//std::cout << b << std::endl;
-
-	//Inferno::Tensor e = a + b;
-	//Inferno::Tensor f = c + d;
-
-
-	//std::cout << g << std::endl;
-
-
-	//Inferno::Tensor d = c.to(Inferno::Device::cpu());
-	//b.backward();
-
-
-
-
-
-	//Inferno::Tensor ac = c.to(Inferno::Device::cpu());
-	//std::cout << ac << std::endl;
-	//Inferno::Tensor ad = d.to(Inferno::Device::cpu());
-	//std::cout << ad << std::endl;
-
-	
 	
 
 	Inferno::NodeTracker::dumpIDs();
 
 
-		return 0;
+	return 0;
 
 }
+
+

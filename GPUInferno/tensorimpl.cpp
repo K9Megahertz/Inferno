@@ -337,6 +337,7 @@ namespace  Inferno {
 
 	void TensorImpl::set_grad(Tensor& g)
 	{
+		
 		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "TensorImpl::set_grad");
 		if (!m_grad)
 		{
@@ -346,7 +347,8 @@ namespace  Inferno {
 		else
 		{
 			Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "existing grad");
-			*m_grad = add_nograd(*m_grad, g);
+			//*m_grad = add_nograd(*m_grad, g);
+			*m_grad = *m_grad + g;
 		}
 	}
 

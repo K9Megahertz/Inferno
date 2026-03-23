@@ -15,9 +15,9 @@ namespace Inferno {
 	}
 
 
-	Tensor::~Tensor() { 
+	//Tensor::~Tensor() { 
 		//std::cout << "tensor bye: " << m_id << std::endl;
-	}
+	//}
 
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -115,106 +115,106 @@ namespace Inferno {
 	//
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		std::ostream& operator<<(std::ostream& os, const Tensor& t) {
+	std::ostream& operator<<(std::ostream& os, const Tensor& t) {
 
-			dispatchOne(t.dtype(), [&](auto TA) {
+		dispatchOne(t.dtype(), [&](auto TA) {
 
-				using AT = typename decltype(TA)::type;
-				using RT = promote_t<AT, float>;
+			using AT = typename decltype(TA)::type;
+			using RT = promote_t<AT, float>;
 
-				Tensor tcpu = t.to(Inferno::Device::cpu());
+			Tensor tcpu = t.to(Inferno::Device::cpu());
 
-				os << "****** Tensor \"" << tcpu.name() << "\" " << "\n";
+			os << "****** Tensor \"" << tcpu.name() << "\" " << "\n";
 
-				switch (tcpu.dtype()) {
-
-
-				case DType::Int32:
-					os << "dtype = Int32" << "\n";
-					break;
-				case DType::Float32:
-					os << "dtype = Float32" << "\n";
-					break;
-				case DType::Float64:
-					os << "dtype = Float64" << "\n";
-					break;
-				default:
-					os << "dtype = " << static_cast<int>(tcpu.dtype()) << "\n";
-					break;
-
-				}
+			switch (tcpu.dtype()) {
 
 
-				os << "shape=[";
-				for (size_t i = 0; i < tcpu.shape().size(); i++) {
-					os << tcpu.shape()[i];
-					if (i + 1 < tcpu.shape().size()) os << ", ";
-				}
-				os << "]\n";
+			case DType::Int32:
+				os << "dtype = Int32" << "\n";
+				break;
+			case DType::Float32:
+				os << "dtype = Float32" << "\n";
+				break;
+			case DType::Float64:
+				os << "dtype = Float64" << "\n";
+				break;
+			default:
+				os << "dtype = " << static_cast<int>(tcpu.dtype()) << "\n";
+				break;
+
+			}
 
 
-				os << "strides=[";
-				for (size_t i = 0; i < tcpu.shape().size(); i++) {
-					os << tcpu.strides()[i];
-					if (i + 1 < tcpu.strides().size()) os << ", ";
-				}
-				os << "]\n";
-
-				//TODO: please print me out =(
-				//os << "offset=" << t.offset() << "\n";
+			os << "shape=[";
+			for (size_t i = 0; i < tcpu.shape().size(); i++) {
+				os << tcpu.shape()[i];
+				if (i + 1 < tcpu.shape().size()) os << ", ";
+			}
+			os << "]\n";
 
 
-				auto p = GetImpl(tcpu);
+			os << "strides=[";
+			for (size_t i = 0; i < tcpu.shape().size(); i++) {
+				os << tcpu.strides()[i];
+				if (i + 1 < tcpu.strides().size()) os << ", ";
+			}
+			os << "]\n";
+
+			//TODO: please print me out =(
+			//os << "offset=" << t.offset() << "\n";
+
+
+			auto p = GetImpl(tcpu);
 			
-				const AT* dptr = nullptr;
-				const RT* gptr = nullptr;
+			const AT* dptr = nullptr;
+			const RT* gptr = nullptr;
 
 				
 				
 				
 
-				os << "data = [";
-				//Print out data
-				if (p->data()) {
+			os << "data = [";
+			//Print out data
+			if (p->data()) {
 
-					size_t numdata = std::min((int)tcpu.numel(), 100);
+				size_t numdata = std::min((int)tcpu.numel(), 100);
 
-					dptr = p->data_as_ptr<AT>();
-					for (int i = 0; i < numdata; i++) {
-						os << std::fixed << std::setprecision(6) << static_cast<AT>(dptr[i]);
-						if (i < tcpu.numel() - 1) os << ", ";
+				dptr = p->data_as_ptr<AT>();
+				for (int i = 0; i < numdata; i++) {
+					os << std::fixed << std::setprecision(6) << static_cast<AT>(dptr[i]);
+					if (i < tcpu.numel() - 1) os << ", ";
+				}
+			}
+			
+			os << "]\n";
+
+
+			os << "has_grad = " << (p->grad() ? "yes" : "no") << "\n";
+
+			//Print out grad
+			os << "grad = [";				
+			
+			if (p->grad()) {
+
+				Tensor& g = *p->grad();
+
+				dispatchOne(g.dtype(), [&](auto TG) {
+					using GT = typename decltype(TG)::type;
+					const GT* gptr = GetImpl(g)->data_as_ptr<GT>();
+					size_t numgrad = std::min<size_t>(g.numel(), 100);
+
+					for (size_t i = 0; i < numgrad; i++) {
+						os << std::fixed << std::setprecision(6) << gptr[i];
+						if (i + 1 < numgrad) os << ", ";
 					}
-				}
-			
-				os << "]\n";
-
-
-				os << "has_grad = " << (p->grad() ? "yes" : "no") << "\n";
-
-				//Print out grad
-				os << "grad = [";				
-			
-				if (p->grad()) {
-
-					Tensor& g = *p->grad();
-
-					dispatchOne(g.dtype(), [&](auto TG) {
-						using GT = typename decltype(TG)::type;
-						const GT* gptr = GetImpl(g)->data_as_ptr<GT>();
-						size_t numgrad = std::min<size_t>(g.numel(), 100);
-
-						for (size_t i = 0; i < numgrad; i++) {
-							os << std::fixed << std::setprecision(6) << gptr[i];
-							if (i + 1 < numgrad) os << ", ";
-						}
-					});
-			
-				}
-				os << "]" << "\n\n\n";
-
 				});
-			return os;
-		}
+			
+			}
+			os << "]" << "\n\n\n";
+
+			});
+		return os;
+	}
 
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

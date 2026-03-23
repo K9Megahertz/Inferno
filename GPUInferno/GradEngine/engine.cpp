@@ -3,6 +3,8 @@
 
 namespace Inferno {
 
+	bool grad_enabled = true;
+
 	thread_local std::unordered_map<Inferno::Edge, Inferno::Tensor, Inferno::EdgeHash>* Inferno::Engine::s_grad_map = nullptr;
 
 	void Engine::backward(const Tensor tensor) {
@@ -79,7 +81,7 @@ namespace Inferno {
 
 	void Engine::accumulate(Node* node,int slot, Tensor& grad)
 	{
-		
+		NoGradGuard guard;
 		if (!node || !s_grad_map) return;
 
 		Edge e{ node, slot };
@@ -89,8 +91,8 @@ namespace Inferno {
 		if (it == s_grad_map->end())
 			s_grad_map->emplace(e, grad);			
 		else
-			//it->second = it->second + grad;
-			it->second = add_nograd(it->second, grad);
+			it->second = it->second + grad;
+			//it->second = add_nograd(it->second, grad);
 	}
 
 	Tensor Engine::grad_in(Node* node, int slot)

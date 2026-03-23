@@ -8,6 +8,9 @@ namespace Inferno {
 	Linear::Linear(size_t in_features, size_t out_features, Device device, DType dtype) {
 
 
+		float lowrange = -1.0f;
+		float highrange = 1.0f;
+
 		size_t count = in_features * out_features;
 
 		//Init weights
@@ -17,10 +20,10 @@ namespace Inferno {
 			std::vector<AT> weight_data;
 
 			if constexpr (std::is_same_v<AT, float>) {
-				weight_data = Inferno::RandomGenerator::generateRandomFloatVector(count, -1.0f, 1.0f);
+				weight_data = Inferno::RandomGenerator::generateRandomFloatVector(count, lowrange,highrange);
 			}
 			else if constexpr (std::is_same_v<AT, double>) {
-				weight_data = Inferno::RandomGenerator::generateRandomDoubleVector(count, -1.0, 1.0);
+				weight_data = Inferno::RandomGenerator::generateRandomDoubleVector(count, lowrange, highrange);
 			}
 			else if constexpr (std::is_same_v<AT, int>) {
 				weight_data = Inferno::RandomGenerator::generateRandomIntVector(count, -1, 1);
@@ -31,7 +34,7 @@ namespace Inferno {
 			}
 
 			m_weights = Tensor(dtype, weight_data, { in_features, out_features }, "weights", device);
-			std::cout << m_weights.to(Inferno::Device::cpu()) << std::endl;
+			//std::cout << m_weights.to(Inferno::Device::cpu()) << std::endl;
 			
 		
 		
@@ -42,10 +45,10 @@ namespace Inferno {
 			std::vector<AT> bias_data;
 
 			if constexpr (std::is_same_v<AT, float>) {
-				bias_data = Inferno::RandomGenerator::generateRandomFloatVector(out_features, -1.0f, 1.0f);
+				bias_data = Inferno::RandomGenerator::generateRandomFloatVector(out_features, lowrange, highrange);
 			}
 			else if constexpr (std::is_same_v<AT, double>) {
-				bias_data = Inferno::RandomGenerator::generateRandomDoubleVector(out_features, -1.0, 1.0);
+				bias_data = Inferno::RandomGenerator::generateRandomDoubleVector(out_features, lowrange, highrange);
 			}
 			else if constexpr (std::is_same_v<AT, int>) {
 				bias_data = Inferno::RandomGenerator::generateRandomIntVector(out_features, -1, 1);
@@ -56,7 +59,7 @@ namespace Inferno {
 			}
 
 			m_biases = Tensor(dtype, bias_data, { out_features }, "biases",device);
-			std::cout << m_biases.to(Inferno::Device::cpu()) << std::endl;
+			//std::cout << m_biases.to(Inferno::Device::cpu()) << std::endl;
 			
 
 		});

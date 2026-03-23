@@ -11,6 +11,8 @@ namespace Inferno {
 
 	void TransposeBackward::backward() {
 
+		NoGradGuard guard;
+
 		Tensor g_out = Engine::grad_in(this, 0);
 
 		Tensor g_a = g_out.transpose(m_dima, m_dimb);

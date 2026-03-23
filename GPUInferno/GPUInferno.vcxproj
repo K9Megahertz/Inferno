@@ -205,7 +205,9 @@
     <ClInclude Include="optim\optimizers.h" />
     <ClInclude Include="tests\additiontests.h" />
     <ClInclude Include="tests\divisiontests.h" />
+    <ClInclude Include="tests\mselosstests.h" />
     <ClInclude Include="tests\multiplicationtests.h" />
+    <ClInclude Include="tests\sigmoidtests.h" />
     <ClInclude Include="tests\subtractiontests.h" />
     <ClInclude Include="tests\tests.h" />
     <ClInclude Include="tests\testtools.h" />

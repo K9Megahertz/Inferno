@@ -9,6 +9,8 @@ namespace Inferno {
 
 	}
 	void SigmoidBackward::backward() {
+
+		NoGradGuard guard;
 		Tensor g_out = Engine::grad_in(this, 0);
 
 		Tensor g_a = dispatchTwo(m_out.dtype(), g_out.dtype(), [&](auto TA, auto TG) {

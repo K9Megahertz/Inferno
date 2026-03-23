@@ -84,6 +84,15 @@ void RunAdditionTests(Inferno::Device device) {
         Inferno::Tensor actual = a + b;
 
         ExpectTensorEq("add float32 simple", actual, expected, stats);
+
+        actual.backward();
+
+        Inferno::Tensor expected_a_grad(Inferno::DType::Float32, std::vector<float>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, { 10 }, "expected_a_grad", device);
+
+        Inferno::Tensor expected_b_grad(Inferno::DType::Float32, std::vector<float>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, { 10 }, "expected_b_grad", device);
+
+        ExpectTensorEq("Addition grad a", *GetImpl(a)->grad(), expected_a_grad, stats);
+        ExpectTensorEq("Addition grad b", *GetImpl(b)->grad(), expected_b_grad, stats);
     }
 
     {
@@ -96,6 +105,15 @@ void RunAdditionTests(Inferno::Device device) {
         Inferno::Tensor actual = a + b;
 
         ExpectTensorEq("add float32 broadcast A", actual, expected, stats);
+
+        actual.backward();
+
+        Inferno::Tensor expected_a_grad(Inferno::DType::Float32, std::vector<float>{2, 2, 2, 2, 2}, { 5 }, "expected_a_grad", device);
+
+        Inferno::Tensor expected_b_grad(Inferno::DType::Float32, std::vector<float>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, { 2,5 }, "expected_b_grad", device);
+
+        ExpectTensorEq("Addition grad a broadcast", *GetImpl(a)->grad(), expected_a_grad, stats);
+        ExpectTensorEq("Addition grad b broadcast", *GetImpl(b)->grad(), expected_b_grad, stats);
     }
 
     {
@@ -108,6 +126,15 @@ void RunAdditionTests(Inferno::Device device) {
         Inferno::Tensor actual = a + b;
 
         ExpectTensorEq("add float32 broadcast B", actual, expected, stats);
+
+        actual.backward();
+
+        Inferno::Tensor expected_a_grad(Inferno::DType::Float32, std::vector<float>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, { 2,5 }, "expected_a_grad", device);
+
+        Inferno::Tensor expected_b_grad(Inferno::DType::Float32, std::vector<float>{2, 2, 2, 2, 2}, { 5 }, "expected_b_grad", device);
+
+        ExpectTensorEq("Addition grad a broadcast B", *GetImpl(a)->grad(), expected_a_grad, stats);
+        ExpectTensorEq("Addition grad b broadcast B", *GetImpl(b)->grad(), expected_b_grad, stats);
     }
 
     {
@@ -120,8 +147,18 @@ void RunAdditionTests(Inferno::Device device) {
         Inferno::Tensor actual = a + b;
 
         ExpectTensorEq("add float32 broadcast A and B", actual, expected, stats);
+
+        actual.backward();
+
+        Inferno::Tensor expected_a_grad(Inferno::DType::Float32, std::vector<float>{2, 2, 2, 2}, { 2,1,2 }, "expected_a_grad", device);
+
+        Inferno::Tensor expected_b_grad(Inferno::DType::Float32, std::vector<float>{2, 2, 2, 2}, { 2,2,1 }, "expected_b_grad", device);
+
+        ExpectTensorEq("Addition grad a", *GetImpl(a)->grad(), expected_a_grad, stats);
+        ExpectTensorEq("Addition grad b", *GetImpl(b)->grad(), expected_b_grad, stats);
     }
 
+  
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //
