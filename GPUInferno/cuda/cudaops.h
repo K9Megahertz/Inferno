@@ -8,6 +8,8 @@
 
 namespace Inferno {
 
+	
+	
 	template<typename AT, typename BT, typename RT>	
 	void cuda_add(const AT* aptr, const BT* bptr, RT* outptr, const std::vector<size_t>& ashape, const std::vector<size_t>& bshape, const std::vector<size_t>& out_shape, size_t out_numel);
 
@@ -49,6 +51,9 @@ namespace Inferno {
 
 	template <typename AT, typename BT>
 	void cuda_embedding(const BT* tptr, const AT* eptr, AT* optr, size_t num_batches, size_t seq_len, size_t embed_dim);
+
+	template <typename AT, typename BT>
+	void cuda_scatter_add(const BT* gptr, const AT* tptr, BT* eptr, size_t embed_dim, size_t numtokens);
 
 	inline void check_cuda(cudaError_t err, const char* msg) {
 		if (err != cudaSuccess) {			

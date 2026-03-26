@@ -4,7 +4,7 @@
 
 namespace Inferno {
 	Tensor sum_to_shape(const Tensor& src, const std::vector<size_t>& target_shape);
-	Tensor scatter_add_embedding(const Tensor &embeddings, const Tensor& token_ids, const Tensor& g_out);
+	Tensor scatter_add(const Tensor &embeddings, const Tensor& token_ids, const Tensor& g_out);
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -57,13 +57,13 @@ namespace Inferno {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	template <typename AT, typename BT>
-	void cpu_scatter_add_embedding(const BT* gptr, const AT* tptr, BT* optr, size_t embed_dim, size_t numtokens) {
+	void cpu_scatter_add(const BT* gptr, const AT* tptr, BT* optr, size_t embed_dim, size_t numtokens) {
 
 
 		for (size_t t = 0; t < numtokens; t++) {
 
-			size_t token = tptr[t];
-			size_t obaseidx=tptr[t] * embed_dim;
+			size_t tokenid = tptr[t];
+			size_t obaseidx = tokenid * embed_dim;
 			size_t gbaseidx= t * embed_dim;			
 			for (size_t e = 0; e < embed_dim; e++) {
 				optr[obaseidx++] += gptr[gbaseidx++];

@@ -105,7 +105,7 @@ namespace Inferno {
 
 
 
-	Tensor scatter_add_embedding(const Tensor& embeddings, const Tensor& token_ids, const Tensor& g_out) {
+	Tensor scatter_add(const Tensor& embeddings, const Tensor& token_ids, const Tensor& g_out) {
 
 
 		if (token_ids.device() != embeddings.device() || g_out.device() != embeddings.device()) {
@@ -154,7 +154,7 @@ namespace Inferno {
 				////////////////////////////////////////////////////
 			case DeviceType::CPU:
 				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CPU Code path");
-				cpu_scatter_add_embedding(gptr, tptr, optr, embed_dim, numtokens);
+				cpu_scatter_add(gptr, tptr, optr, embed_dim, numtokens);
 
 				break;
 
@@ -163,7 +163,7 @@ namespace Inferno {
 				////////////////////////////////////////////////////
 			case DeviceType::CUDA:
 				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CUDA Code path");
-				//cpu_scatter_add_embedding(dst_ptr, src_ptr, src_numel, src_rank, src_shape, temp_dst_strides, out_numel);
+				cuda_scatter_add(gptr, tptr, optr, embed_dim, numtokens);
 				break;
 
 			default:

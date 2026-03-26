@@ -236,6 +236,7 @@
     <ClInclude Include="GradFN\embeddingbackward.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="cuda\gpu_atomic.cuh" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="cuda\cudaadd.cu" />
@@ -250,5 +251,6 @@
     <CudaCompile Include="cuda\cudasigmoid.cu" />
     <CudaCompile Include="cuda\cudasgdstep.cu" />
     <CudaCompile Include="cuda\cudaembedding.cu" />
+    <CudaCompile Include="cuda\cudascatteradd.cu" />
   </ItemGroup>
 </Project>

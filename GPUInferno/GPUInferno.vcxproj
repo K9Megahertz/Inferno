@@ -191,6 +191,7 @@
   <ItemGroup>
     <ClInclude Include="broadcastops.h" />
     <ClInclude Include="cuda\cudaops.h" />
+    <ClInclude Include="cuda\gpu_atomic.cuh" />
     <ClInclude Include="GradFN\embeddingbackward.h" />
     <ClInclude Include="functional\sigmoid.h" />
     <ClInclude Include="GradFN\accumulategrad.h" />
@@ -238,6 +239,7 @@
     <CudaCompile Include="cuda\cudamultiply.cu" />
     <CudaCompile Include="cuda\cudafilltensor.cu" />
     <CudaCompile Include="cuda\cudanegate.cu" />
+    <CudaCompile Include="cuda\cudascatteradd.cu" />
     <CudaCompile Include="cuda\cudasigmoid.cu" />
     <CudaCompile Include="cuda\cudasubtract.cu" />
     <CudaCompile Include="cuda\cudasumtoshape.cu" />
