@@ -12,10 +12,12 @@ namespace  Inferno {
 		m_device = device;
 		m_dtype = type;
 		m_shape = shape;
+		m_offset = 0;
 		m_name = name;
 		m_strides = calculate_strides(shape);	
 		m_grad = nullptr;
 		m_requires_grad = true;
+		m_isview = false;
 
 		size_t bytes = numel() * dtype_size(type);
 
@@ -24,6 +26,35 @@ namespace  Inferno {
 		}
 		else if (device.m_type == DeviceType::CUDA) {
 			m_data = std::make_shared<CUDAStorage>(bytes);			
+		}
+		else {
+			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "Attempt to create TensorImpl with unknown device type.");
+			exit(1);
+		}
+
+		m_id = Inferno::IDBroker::GenID();
+		Inferno::NodeTracker::addID(this->m_id, this->m_name);
+
+	}
+
+	TensorImpl::TensorImpl(DType type, std::initializer_list<size_t> shape, std::string name, Inferno::Device device) {
+		m_device = device;
+		m_dtype = type;
+		m_shape = shape;
+		m_offset = 0;
+		m_name = name;
+		m_strides = calculate_strides(shape);
+		m_grad = nullptr;
+		m_requires_grad = true;
+		m_isview = false;
+
+		size_t bytes = numel() * dtype_size(type);
+
+		if (device.m_type == DeviceType::CPU) {
+			m_data = std::make_shared<CPUStorage>(bytes);
+		}
+		else if (device.m_type == DeviceType::CUDA) {
+			m_data = std::make_shared<CUDAStorage>(bytes);
 		}
 		else {
 			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "Attempt to create TensorImpl with unknown device type.");
@@ -196,6 +227,51 @@ namespace  Inferno {
 	const std::shared_ptr<Tensor>& TensorImpl::grad() const {
 		return m_grad;
 	}
+
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	//  Function set_is_view
+	//
+	//
+	//
+	//
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	void TensorImpl::set_is_view(bool flag) {
+		m_isview = flag;
+	}
+
+	bool TensorImpl::is_view() {
+		return m_isview;
+	}
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	//  Function set_is_view
+	//
+	//
+	//
+	//
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	void TensorImpl::set_base(const std::shared_ptr<TensorImpl>& base) {
+		m_base = base;  // weak_ptr assignment
+	}
+
+	std::shared_ptr<TensorImpl> TensorImpl::get_base() {
+		return m_base.lock();
+	}
+
+
+	bool& TensorImpl::requires_grad() {
+		return m_requires_grad;
+	}
+	
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -385,5 +461,23 @@ namespace  Inferno {
 	const int& TensorImpl::id() const {
 		return m_id;
 	}	
+
+	bool TensorImpl::is_contiguous() const {
+
+		if (m_shape.empty())
+			return true;
+
+		size_t expected = 1;
+
+		for (int d = static_cast<int>(m_shape.size()) - 1; d >= 0; --d) {
+
+			if (m_strides[d] != expected)
+				return false;
+
+			expected *= m_shape[d];
+		}
+
+		return true;
+	}
 
 }

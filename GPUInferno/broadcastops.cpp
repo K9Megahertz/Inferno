@@ -105,7 +105,7 @@ namespace Inferno {
 
 
 
-	Tensor scatter_add(const Tensor& embeddings, const Tensor& token_ids, const Tensor& g_out) {
+	Tensor scatter_add_embedding(const Tensor& embeddings, const Tensor& token_ids, const Tensor& g_out) {
 
 
 		if (token_ids.device() != embeddings.device() || g_out.device() != embeddings.device()) {
@@ -154,7 +154,7 @@ namespace Inferno {
 				////////////////////////////////////////////////////
 			case DeviceType::CPU:
 				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CPU Code path");
-				cpu_scatter_add(gptr, tptr, optr, embed_dim, numtokens);
+				cpu_scatter_add_embedding(gptr, tptr, optr, embed_dim, numtokens);
 
 				break;
 
@@ -163,7 +163,7 @@ namespace Inferno {
 				////////////////////////////////////////////////////
 			case DeviceType::CUDA:
 				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CUDA Code path");
-				cuda_scatter_add(gptr, tptr, optr, embed_dim, numtokens);
+				cuda_scatter_add_embedding(gptr, tptr, optr, embed_dim, numtokens);
 				break;
 
 			default:
@@ -177,6 +177,96 @@ namespace Inferno {
 		});
 
 
+	}
+
+
+	Tensor scatter_add_slice(Tensor& A, const Tensor& g_out,int axis,size_t start,size_t step) {
+
+		//Inferno::Tensor out(A.dtype(), A.shape(), "SliceBackward", A.device());		
+
+		
+		
+		if (A.device() != g_out.device()) {
+			Logger::Append(
+				Logger::LogLevel::LOGLEVEL_ERROR,
+				"scatter_add_slice: g_a and g_out must be on the same device."
+			);
+			exit(1);
+		}
+
+		if (A.dtype() != g_out.dtype()) {
+			Logger::Append(
+				Logger::LogLevel::LOGLEVEL_ERROR,
+				"scatter_add_slice: g_a and g_out must have the same dtype."
+			);
+			exit(1);
+		}
+
+		if (A.shape().size() != g_out.shape().size()) {
+			Logger::Append(
+				Logger::LogLevel::LOGLEVEL_ERROR,
+				"scatter_add_slice: rank mismatch between g_a and g_out."
+			);
+			exit(1);
+		}
+
+		if (axis < 0) {
+			axis += static_cast<int>(A.shape().size());
+		}
+
+		if (axis < 0 || axis >= static_cast<int>(A.shape().size())) {
+			Logger::Append(
+				Logger::LogLevel::LOGLEVEL_ERROR,
+				"scatter_add_slice: axis out of bounds."
+			);
+			exit(1);
+		}
+
+		if (step == 0) {
+			Logger::Append(
+				Logger::LogLevel::LOGLEVEL_ERROR,
+				"scatter_add_slice: step cannot be 0."
+			);
+			exit(1);
+		}
+		
+
+		return dispatchOne(A.dtype(), [&](auto TagA) {
+			using AT = typename decltype(TagA)::type;
+
+			Tensor out = Tensor::zeros_like(A);
+
+			AT* optr = GetImpl(out)->data_as_ptr<AT>();
+			const AT* gptr = GetImpl(g_out)->data_as_ptr<AT>();
+
+			switch (A.device().m_type) {
+
+				////////////////////////////////////////////////////
+				// CPU Code Path
+				////////////////////////////////////////////////////
+			case DeviceType::CPU:
+				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CPU Code path");
+				cpu_scatter_add_slice(optr, gptr, out.shape(), out.strides(), out.offset(), g_out.shape(), g_out.strides(), g_out.offset(), g_out.numel(), axis, start, step);
+
+				break;
+
+				////////////////////////////////////////////////////
+				// CUDA Code Path
+				////////////////////////////////////////////////////
+			case DeviceType::CUDA:
+				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CUDA Code path");
+				cuda_scatter_add_slice(optr, gptr, out.shape(), out.strides(), out.offset(), g_out.shape(), g_out.strides(), g_out.offset(), g_out.numel(), axis, start, step);
+				break;
+
+			default:
+				Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "Invalid device type");
+				exit(1);
+			}
+
+			return out;
+
+			
+			});
 	}
 
 

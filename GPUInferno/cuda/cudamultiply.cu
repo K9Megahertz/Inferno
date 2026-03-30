@@ -2,13 +2,11 @@
 
 namespace Inferno {
 
-
-
     constexpr int MAX_DIMS = 12;
 
     template<typename AT, typename BT, typename RT>
     __global__ void multiply_kernel_broadcast(const AT* aptr, const BT* bptr, RT* outptr, size_t out_numel, int out_rank,
-        const size_t* a_padded, const size_t* b_padded, const size_t* out_shape,
+        const size_t* a_padded, const size_t* b_padded, const size_t* out_shape, size_t aoffset, size_t boffset,
         const size_t* a_strides, const size_t* b_strides) {
 
 
@@ -25,8 +23,8 @@ namespace Inferno {
             tmp /= out_shape[d];
         }
 
-        size_t a_offset = 0;
-        size_t b_offset = 0;
+        size_t a_offset = aoffset;
+        size_t b_offset = boffset;
 
         for (int d = 0; d < out_rank; ++d) {
             const size_t a_idx = (a_padded[d] == 1) ? 0 : out_idx[d];
@@ -40,8 +38,17 @@ namespace Inferno {
     }
 
     template<typename AT, typename BT, typename RT>
-    void cuda_multiply(const AT* aptr, const BT* bptr, RT* outptr, const std::vector<size_t>& ashape, const std::vector<size_t>& bshape,
-        const std::vector<size_t>& out_shape, size_t out_numel) {
+    void cuda_multiply(const AT* aptr,
+        const BT* bptr,
+        RT* outptr,
+        const std::vector<size_t>& ashape,
+        const std::vector<size_t>& astrides,
+        size_t aoffset,
+        const std::vector<size_t>& bshape,
+        const std::vector<size_t>& bstrides,
+        size_t boffset,
+        const std::vector<size_t>& out_shape,
+        size_t out_numel) {
 
         const size_t out_rank = out_shape.size();
 
@@ -52,29 +59,23 @@ namespace Inferno {
         }
 
         // Left-pad A and B shapes to output rank
-        std::vector<size_t> a_padded(out_rank, 1);
-        std::vector<size_t> b_padded(out_rank, 1);
+        std::vector<size_t> a_padded_shape(out_rank, 1);
+        std::vector<size_t> b_padded_shape(out_rank, 1);
+
+        std::vector<size_t> a_padded_strides(out_rank, 1);
+        std::vector<size_t> b_padded_strides(out_rank, 1);
 
         const size_t a_rank_offset = out_rank - ashape.size();
         const size_t b_rank_offset = out_rank - bshape.size();
 
         for (size_t i = 0; i < ashape.size(); ++i) {
-            a_padded[a_rank_offset + i] = ashape[i];
+            a_padded_shape[a_rank_offset + i] = ashape[i];
+            a_padded_strides[a_rank_offset + i] = astrides[i];
         }
 
         for (size_t i = 0; i < bshape.size(); ++i) {
-            b_padded[b_rank_offset + i] = bshape[i];
-        }
-
-        // Contiguous padded strides
-        std::vector<size_t> a_strides(out_rank, 1);
-        std::vector<size_t> b_strides(out_rank, 1);
-
-        if (out_rank > 0) {
-            for (int d = static_cast<int>(out_rank) - 2; d >= 0; --d) {
-                a_strides[d] = a_strides[d + 1] * a_padded[d + 1];
-                b_strides[d] = b_strides[d + 1] * b_padded[d + 1];
-            }
+            b_padded_shape[b_rank_offset + i] = bshape[i];
+            b_padded_strides[b_rank_offset + i] = bstrides[i];
         }
 
         size_t* d_a_padded = nullptr;
@@ -83,106 +84,144 @@ namespace Inferno {
         size_t* d_a_strides = nullptr;
         size_t* d_b_strides = nullptr;
 
-    check_cuda(cudaMalloc(&d_a_padded, out_rank * sizeof(size_t)), "cuda_multiply cudaMalloc d_a_padded failed");
-    check_cuda(cudaMalloc(&d_b_padded, out_rank * sizeof(size_t)), "cuda_multiply cudaMalloc d_b_padded failed");
-    check_cuda(cudaMalloc(&d_out_shape, out_rank * sizeof(size_t)), "cuda_multiply cudaMalloc d_out_shape failed");
-    check_cuda(cudaMalloc(&d_a_strides, out_rank * sizeof(size_t)), "cuda_multiply cudaMalloc d_a_strides failed");
-    check_cuda(cudaMalloc(&d_b_strides, out_rank * sizeof(size_t)), "cuda_multiply cudaMalloc d_b_strides failed");
+        check_cuda(cudaMalloc(&d_a_padded, out_rank * sizeof(size_t)), "cuda_multiply cudaMalloc d_a_padded failed");
+        check_cuda(cudaMalloc(&d_b_padded, out_rank * sizeof(size_t)), "cuda_multiply cudaMalloc d_b_padded failed");
+        check_cuda(cudaMalloc(&d_out_shape, out_rank * sizeof(size_t)), "cuda_multiply cudaMalloc d_out_shape failed");
+        check_cuda(cudaMalloc(&d_a_strides, out_rank * sizeof(size_t)), "cuda_multiply cudaMalloc d_a_strides failed");
+        check_cuda(cudaMalloc(&d_b_strides, out_rank * sizeof(size_t)), "cuda_multiply cudaMalloc d_b_strides failed");
 
-    check_cuda(cudaMemcpy(d_a_padded, a_padded.data(), out_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_multiply cudaMemcpy d_a_padded failed");
-    check_cuda(cudaMemcpy(d_b_padded, b_padded.data(), out_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_multiply cudaMemcpy d_b_padded failed");
-    check_cuda(cudaMemcpy(d_out_shape, out_shape.data(), out_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_multiply cudaMemcpy d_out_shape failed");
-    check_cuda(cudaMemcpy(d_a_strides, a_strides.data(), out_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_multiply cudaMemcpy d_a_strides failed");
-    check_cuda(cudaMemcpy(d_b_strides, b_strides.data(), out_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_multiply cudaMemcpy d_b_strides failed");
+        check_cuda(cudaMemcpy(d_a_padded, a_padded_shape.data(), out_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_multiply cudaMemcpy d_a_padded failed");
+        check_cuda(cudaMemcpy(d_b_padded, b_padded_shape.data(), out_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_multiply cudaMemcpy d_b_padded failed");
+        check_cuda(cudaMemcpy(d_out_shape, out_shape.data(), out_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_multiply cudaMemcpy d_out_shape failed");
+        check_cuda(cudaMemcpy(d_a_strides, a_padded_strides.data(), out_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_multiply cudaMemcpy d_a_strides failed");
+        check_cuda(cudaMemcpy(d_b_strides, b_padded_strides.data(), out_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_multiply cudaMemcpy d_b_strides failed");
 
-    constexpr int threads = 256;
-    int blocks = static_cast<int>((out_numel + threads - 1) / threads);
+        constexpr int threads = 256;
+        int blocks = static_cast<int>((out_numel + threads - 1) / threads);
 
-    multiply_kernel_broadcast<AT, BT, RT> << <blocks, threads >> > (
-        aptr,
-        bptr,
-        outptr,
-        out_numel,
-        static_cast<int>(out_rank),
-        d_a_padded,
-        d_b_padded,
-        d_out_shape,
-        d_a_strides,
-        d_b_strides
-        );
+        multiply_kernel_broadcast<AT, BT, RT> << <blocks, threads >> > (
+            aptr,
+            bptr,
+            outptr,
+            out_numel,
+            static_cast<int>(out_rank),
+            d_a_padded,
+            d_b_padded,
+            d_out_shape,
+            aoffset,
+            boffset,
+            d_a_strides,
+            d_b_strides
+            );
 
-    check_cuda(cudaGetLastError(), "cuda_multiply kernel launch failed");
-    check_cuda(cudaDeviceSynchronize(), "cuda_multiply kernel execution failed");
+        check_cuda(cudaGetLastError(), "cuda_multiply kernel launch failed");
+        check_cuda(cudaDeviceSynchronize(), "cuda_multiply kernel execution failed");
 
-    check_cuda(cudaFree(d_a_padded), "cuda_multiply cudaFree d_a_padded failed");
-    check_cuda(cudaFree(d_b_padded), "cuda_multiply cudaFree d_b_padded failed");
-    check_cuda(cudaFree(d_out_shape), "cuda_multiply cudaFree d_out_shape failed");
-    check_cuda(cudaFree(d_a_strides), "cuda_multiply cudaFree d_a_strides failed");
-    check_cuda(cudaFree(d_b_strides), "cuda_multiply cudaFree d_b_strides failed");
-}
+        check_cuda(cudaFree(d_a_padded), "cuda_multiply cudaFree d_a_padded failed");
+        check_cuda(cudaFree(d_b_padded), "cuda_multiply cudaFree d_b_padded failed");
+        check_cuda(cudaFree(d_out_shape), "cuda_multiply cudaFree d_out_shape failed");
+        check_cuda(cudaFree(d_a_strides), "cuda_multiply cudaFree d_a_strides failed");
+        check_cuda(cudaFree(d_b_strides), "cuda_multiply cudaFree d_b_strides failed");
+    }
 
-// explicit instantiations
-template void cuda_multiply<int, int, int>(
-    const int*, const int*, int*,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    size_t);
+    // explicit instantiations
+    template void cuda_multiply<int, int, int>(
+        const int*, const int*, int*,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        size_t);
 
-template void cuda_multiply<float, float, float>(
-    const float*, const float*, float*,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    size_t);
+    template void cuda_multiply<float, float, float>(
+        const float*, const float*, float*,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        size_t);
 
-template void cuda_multiply<double, double, double>(
-    const double*, const double*, double*,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    size_t);
+    template void cuda_multiply<double, double, double>(
+        const double*, const double*, double*,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        size_t);
 
-template void cuda_multiply<int, float, float>(
-    const int*, const float*, float*,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    size_t);
+    template void cuda_multiply<int, float, float>(
+        const int*, const float*, float*,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        size_t);
 
-template void cuda_multiply<float, int, float>(
-    const float*, const int*, float*,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    size_t);
+    template void cuda_multiply<float, int, float>(
+        const float*, const int*, float*,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        size_t);
 
-template void cuda_multiply<int, double, double>(
-    const int*, const double*, double*,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    size_t);
+    template void cuda_multiply<int, double, double>(
+        const int*, const double*, double*,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        size_t);
 
-template void cuda_multiply<double, int, double>(
-    const double*, const int*, double*,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    size_t);
+    template void cuda_multiply<double, int, double>(
+        const double*, const int*, double*,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        size_t);
 
-template void cuda_multiply<float, double, double>(
-    const float*, const double*, double*,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    size_t);
+    template void cuda_multiply<float, double, double>(
+        const float*, const double*, double*,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        size_t);
 
-template void cuda_multiply<double, float, double>(
-    const double*, const float*, double*,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    const std::vector<size_t>&,
-    size_t);
+    template void cuda_multiply<double, float, double>(
+        const double*, const float*, double*,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        const std::vector<size_t>&,
+        size_t,
+        const std::vector<size_t>&,
+        size_t);
 
 }

@@ -1,0 +1,108 @@
+#include "cudaops.h"
+#include "cudamath.cuh"
+namespace Inferno {
+
+    template <typename AT>
+    __global__ void cuda_kernel_calc_mean(const AT* iptr, AT* optr, size_t num_batches, size_t dim) {
+
+
+        const size_t idx = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+
+        if (idx < num_batches) {
+            size_t base = idx * dim;
+            AT mean = 0;
+            for (size_t curr_pos = 0; curr_pos < dim; curr_pos++) {
+                mean += iptr[base + curr_pos];
+            }
+            mean /= dim;
+
+            optr[idx] = mean;
+        }
+        
+
+    }
+
+    template <typename AT>
+    __global__ void cuda_kernel_calc_stddev(const AT* iptr, const AT* mptr, AT* optr, size_t num_batches, size_t dim) {
+
+
+        const size_t idx = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+
+        if (idx < num_batches) {
+            //get variance
+            size_t base = idx * dim;            
+            AT var = 0;
+            for (size_t curr_pos = 0; curr_pos < dim; curr_pos++) {
+                AT val = iptr[base + curr_pos];
+                var += (val - mptr[idx]) * (val - mptr[idx]);
+            }
+            var /= dim;
+
+
+            //get stddev
+            AT stddev = std::sqrt(var);
+
+        }
+    }
+
+
+    template <typename AT>
+    __global__ void cuda_kernel_calc_full(const AT* iptr, AT* optr, size_t N, size_t ndim) {
+
+
+        const size_t idx = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+
+        if (idx < N) {
+
+    
+            
+
+            size_t row = idx / ndim;
+            size_t base = row * ndim;
+
+            //get mean
+            AT mean = 0;
+            for (size_t curr_pos = 0; curr_pos < ndim; curr_pos++) {
+                mean += iptr[base + curr_pos];
+            }
+            mean /= ndim;
+
+
+            //get variance            
+            AT var = 0;
+            for (size_t curr_pos = 0; curr_pos < ndim; curr_pos++) {
+                AT val = iptr[base + curr_pos];
+                var += (val - mean) * (val - mean);
+            }
+            var /= ndim;
+
+            //get stddev
+            AT stddev = cuda_sqrt<AT>(var);
+
+            optr[idx] = (iptr[idx] - mean) / stddev;
+
+        }
+    }
+
+
+    template <typename AT>
+    void cuda_layer_normalization(const AT* iptr, AT* optr, float* gptr, float* bptr, size_t num_batches, size_t dim) {
+
+
+
+       
+        constexpr int threads = 256;
+        int blocks = static_cast<int>((num_batches * dim + threads - 1) / threads);
+        cuda_kernel_calc_full << <blocks, threads >> > (iptr, optr, num_batches * dim, dim);
+
+
+
+    }
+
+
+
+    template void cuda_layer_normalization<int>(const int*, int*, float*, float*, size_t, size_t);
+    template void cuda_layer_normalization<float>(const float*, float*, float*, float*, size_t, size_t);
+    template void cuda_layer_normalization<double>(const double*, double*, float*, float*, size_t, size_t);
+
+}

@@ -167,10 +167,13 @@
     <ClCompile Include="GradFN\mselossbackward.cpp" />
     <ClCompile Include="GradFN\multiplybackward.cpp" />
     <ClCompile Include="GradFN\negatebackward.cpp" />
+    <ClCompile Include="GradFN\reshapebackward.cpp" />
     <ClCompile Include="GradFN\sigmoidbackward.cpp" />
+    <ClCompile Include="GradFN\slicebackward.cpp" />
     <ClCompile Include="GradFN\subtractbackward.cpp" />
     <ClCompile Include="GradFN\transposebackward.cpp" />
     <ClCompile Include="layers\embedding.cpp" />
+    <ClCompile Include="layers\layernorm.cpp" />
     <ClCompile Include="layers\linear.cpp" />
     <ClCompile Include="layers\module.cpp" />
     <ClCompile Include="layers\module.h" />
@@ -191,6 +194,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="broadcastops.h" />
+    <ClInclude Include="cuda\cudamath.cuh" />
     <ClInclude Include="cuda\cudaops.h" />
     <ClInclude Include="cuda\gpu_atomic.cuh" />
     <ClInclude Include="GradFN\embeddingbackward.h" />
@@ -202,10 +206,13 @@
     <ClInclude Include="GradFN\mmbackward.h" />
     <ClInclude Include="GradFN\mselossbackward.h" />
     <ClInclude Include="GradFN\negatebackward.h" />
+    <ClInclude Include="GradFN\reshapebackward.h" />
     <ClInclude Include="GradFN\sigmoidbackward.h" />
+    <ClInclude Include="GradFN\slicebackward.h" />
     <ClInclude Include="GradFN\subtractbackward.h" />
     <ClInclude Include="GradFN\transposebackward.h" />
     <ClInclude Include="layers\embedding.h" />
+    <ClInclude Include="layers\layernorm.h" />
     <ClInclude Include="layers\linear.h" />
     <ClInclude Include="loss\loss.h" />
     <ClInclude Include="optim\optimizers.h" />
@@ -235,12 +242,14 @@
     <ClInclude Include="Util\timer.h" />
     <CudaCompile Include="cuda\cudadivide.cu" />
     <CudaCompile Include="cuda\cudaembedding.cu" />
+    <CudaCompile Include="cuda\cudalayernorm.cu" />
     <CudaCompile Include="cuda\cudamatmul.cu" />
     <CudaCompile Include="cuda\cudamseloss.cu" />
     <CudaCompile Include="cuda\cudamultiply.cu" />
     <CudaCompile Include="cuda\cudafilltensor.cu" />
     <CudaCompile Include="cuda\cudanegate.cu" />
-    <CudaCompile Include="cuda\cudascatteradd.cu" />
+    <CudaCompile Include="cuda\cudascatteraddembedding.cu" />
+    <CudaCompile Include="cuda\cudascatteraddslice.cu" />
     <CudaCompile Include="cuda\cudasigmoid.cu" />
     <CudaCompile Include="cuda\cudasubtract.cu" />
     <CudaCompile Include="cuda\cudasumtoshape.cu" />

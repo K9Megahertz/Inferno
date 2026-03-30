@@ -14,6 +14,7 @@ namespace Inferno {
 	Tensor matmul(const Tensor& A, const Tensor& B);
 	Tensor matmul_impl(const Tensor& A, const Tensor& B);
 	Tensor transpose_impl(const Tensor& A, int dima, int dimb);
+	Tensor reshape_impl(Tensor& A, const std::vector<size_t>& newshape);
 	Tensor make_view(const Tensor& base, const std::vector<size_t>& new_shape, const std::vector<size_t>& new_strides, size_t new_storage_offset, const std::string& name);
 
 
@@ -29,36 +30,41 @@ namespace Inferno {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	template<typename AT, typename BT, typename RT>
-	void cpu_add(const AT* aptr,const BT* bptr,RT* optr,const std::vector<size_t>& ashape,const std::vector<size_t>& bshape,const std::vector<size_t>& out_shape,size_t out_numel)
+	void cpu_add(const AT* aptr,
+		         const BT* bptr,
+		         RT* optr, 
+		         const std::vector<size_t>& ashape,
+				 const std::vector<size_t>& astrides,
+				 size_t aoffset,
+		         const std::vector<size_t>& bshape,
+		         const std::vector<size_t>& bstrides,		         
+		         size_t boffset,
+		         const std::vector<size_t>& out_shape,
+		         size_t out_numel)
 	{
 		const size_t out_rank = out_shape.size();
 
 		// Left-pad A and B shapes to output rank
-		std::vector<size_t> a_padded(out_rank, 1);
-		std::vector<size_t> b_padded(out_rank, 1);
+		std::vector<size_t> a_padded_shape(out_rank, 1);
+		std::vector<size_t> b_padded_shape(out_rank, 1);
+
+		std::vector<size_t> a_padded_strides(out_rank, 1);
+		std::vector<size_t> b_padded_strides(out_rank, 1);
 
 		size_t a_rank_offset = out_rank - ashape.size();
 		size_t b_rank_offset = out_rank - bshape.size();
 
 		for (size_t i = 0; i < ashape.size(); ++i) {
-			a_padded[a_rank_offset + i] = ashape[i];
+			a_padded_shape[a_rank_offset + i] = ashape[i];
+			a_padded_strides[a_rank_offset + i] = astrides[i];
 		}
 
 		for (size_t i = 0; i < bshape.size(); ++i) {
-			b_padded[b_rank_offset + i] = bshape[i];
+			b_padded_shape[b_rank_offset + i] = bshape[i];
+			b_padded_strides[b_rank_offset + i] = bstrides[i];
 		}
 
-		// Build contiguous padded strides for A and B
-		std::vector<size_t> a_strides(out_rank, 1);
-		std::vector<size_t> b_strides(out_rank, 1);
-
-		if (out_rank > 0) {
-			for (int d = static_cast<int>(out_rank) - 2; d >= 0; --d) {
-				a_strides[d] = a_strides[d + 1] * a_padded[d + 1];
-				b_strides[d] = b_strides[d + 1] * b_padded[d + 1];
-			}
-		}
-
+		
 		std::vector<size_t> out_idx(out_rank, 0);
 
 		for (size_t linear = 0; linear < out_numel; ++linear) {
@@ -71,15 +77,15 @@ namespace Inferno {
 			}
 
 			// Compute A and B offsets under broadcasting
-			size_t a_offset = 0;
-			size_t b_offset = 0;
+			size_t a_offset = aoffset;
+			size_t b_offset = boffset;
 
 			for (size_t d = 0; d < out_rank; ++d) {
-				size_t a_idx = (a_padded[d] == 1) ? 0 : out_idx[d];
-				size_t b_idx = (b_padded[d] == 1) ? 0 : out_idx[d];
+				size_t a_idx = (a_padded_shape[d] == 1) ? 0 : out_idx[d];
+				size_t b_idx = (b_padded_shape[d] == 1) ? 0 : out_idx[d];
 
-				a_offset += a_idx * a_strides[d];
-				b_offset += b_idx * b_strides[d];
+				a_offset += a_idx * a_padded_strides[d];
+				b_offset += b_idx * b_padded_strides[d];
 			}
 
 			optr[linear] = static_cast<RT>(aptr[a_offset]) + static_cast<RT>(bptr[b_offset]);
@@ -99,35 +105,40 @@ namespace Inferno {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	template<typename AT, typename BT, typename RT>
-	void cpu_subtract(const AT* aptr, const BT* bptr, RT* optr, const std::vector<size_t>& ashape, const std::vector<size_t>& bshape, const std::vector<size_t>& out_shape, size_t out_numel)
+	void cpu_subtract(const AT* aptr,
+		const BT* bptr,
+		RT* optr,
+		const std::vector<size_t>& ashape,
+		const std::vector<size_t>& astrides,
+		size_t aoffset,
+		const std::vector<size_t>& bshape,
+		const std::vector<size_t>& bstrides,
+		size_t boffset,
+		const std::vector<size_t>& out_shape,
+		size_t out_numel)
 	{
 		const size_t out_rank = out_shape.size();
 
 		// Left-pad A and B shapes to output rank
-		std::vector<size_t> a_padded(out_rank, 1);
-		std::vector<size_t> b_padded(out_rank, 1);
+		std::vector<size_t> a_padded_shape(out_rank, 1);
+		std::vector<size_t> b_padded_shape(out_rank, 1);
+
+		std::vector<size_t> a_padded_strides(out_rank, 1);
+		std::vector<size_t> b_padded_strides(out_rank, 1);
 
 		size_t a_rank_offset = out_rank - ashape.size();
 		size_t b_rank_offset = out_rank - bshape.size();
 
 		for (size_t i = 0; i < ashape.size(); ++i) {
-			a_padded[a_rank_offset + i] = ashape[i];
+			a_padded_shape[a_rank_offset + i] = ashape[i];
+			a_padded_strides[a_rank_offset + i] = astrides[i];
 		}
 
 		for (size_t i = 0; i < bshape.size(); ++i) {
-			b_padded[b_rank_offset + i] = bshape[i];
+			b_padded_shape[b_rank_offset + i] = bshape[i];
+			b_padded_strides[b_rank_offset + i] = bstrides[i];
 		}
 
-		// Build contiguous padded strides for A and B
-		std::vector<size_t> a_strides(out_rank, 1);
-		std::vector<size_t> b_strides(out_rank, 1);
-
-		if (out_rank > 0) {
-			for (int d = static_cast<int>(out_rank) - 2; d >= 0; --d) {
-				a_strides[d] = a_strides[d + 1] * a_padded[d + 1];
-				b_strides[d] = b_strides[d + 1] * b_padded[d + 1];
-			}
-		}
 
 		std::vector<size_t> out_idx(out_rank, 0);
 
@@ -141,15 +152,15 @@ namespace Inferno {
 			}
 
 			// Compute A and B offsets under broadcasting
-			size_t a_offset = 0;
-			size_t b_offset = 0;
+			size_t a_offset = aoffset;
+			size_t b_offset = boffset;
 
 			for (size_t d = 0; d < out_rank; ++d) {
-				size_t a_idx = (a_padded[d] == 1) ? 0 : out_idx[d];
-				size_t b_idx = (b_padded[d] == 1) ? 0 : out_idx[d];
+				size_t a_idx = (a_padded_shape[d] == 1) ? 0 : out_idx[d];
+				size_t b_idx = (b_padded_shape[d] == 1) ? 0 : out_idx[d];
 
-				a_offset += a_idx * a_strides[d];
-				b_offset += b_idx * b_strides[d];
+				a_offset += a_idx * a_padded_strides[d];
+				b_offset += b_idx * b_padded_strides[d];
 			}
 
 			optr[linear] = static_cast<RT>(aptr[a_offset]) - static_cast<RT>(bptr[b_offset]);
@@ -168,35 +179,40 @@ namespace Inferno {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	template<typename AT, typename BT, typename RT>
-	void cpu_multiply(const AT* aptr, const BT* bptr, RT* optr, const std::vector<size_t>& ashape, const std::vector<size_t>& bshape, const std::vector<size_t>& out_shape, size_t out_numel)
+	void cpu_multiply(const AT * aptr,
+		const BT * bptr,
+		RT * optr,
+		const std::vector<size_t>&ashape,
+		const std::vector<size_t>&astrides,
+		size_t aoffset,
+		const std::vector<size_t>&bshape,
+		const std::vector<size_t>&bstrides,
+		size_t boffset,
+		const std::vector<size_t>&out_shape,
+		size_t out_numel)
 	{
 		const size_t out_rank = out_shape.size();
 
 		// Left-pad A and B shapes to output rank
-		std::vector<size_t> a_padded(out_rank, 1);
-		std::vector<size_t> b_padded(out_rank, 1);
+		std::vector<size_t> a_padded_shape(out_rank, 1);
+		std::vector<size_t> b_padded_shape(out_rank, 1);
+
+		std::vector<size_t> a_padded_strides(out_rank, 1);
+		std::vector<size_t> b_padded_strides(out_rank, 1);
 
 		size_t a_rank_offset = out_rank - ashape.size();
 		size_t b_rank_offset = out_rank - bshape.size();
 
 		for (size_t i = 0; i < ashape.size(); ++i) {
-			a_padded[a_rank_offset + i] = ashape[i];
+			a_padded_shape[a_rank_offset + i] = ashape[i];
+			a_padded_strides[a_rank_offset + i] = astrides[i];
 		}
 
 		for (size_t i = 0; i < bshape.size(); ++i) {
-			b_padded[b_rank_offset + i] = bshape[i];
+			b_padded_shape[b_rank_offset + i] = bshape[i];
+			b_padded_strides[b_rank_offset + i] = bstrides[i];
 		}
 
-		// Build contiguous padded strides for A and B
-		std::vector<size_t> a_strides(out_rank, 1);
-		std::vector<size_t> b_strides(out_rank, 1);
-
-		if (out_rank > 0) {
-			for (int d = static_cast<int>(out_rank) - 2; d >= 0; --d) {
-				a_strides[d] = a_strides[d + 1] * a_padded[d + 1];
-				b_strides[d] = b_strides[d + 1] * b_padded[d + 1];
-			}
-		}
 
 		std::vector<size_t> out_idx(out_rank, 0);
 
@@ -210,15 +226,15 @@ namespace Inferno {
 			}
 
 			// Compute A and B offsets under broadcasting
-			size_t a_offset = 0;
-			size_t b_offset = 0;
+			size_t a_offset = aoffset;
+			size_t b_offset = boffset;
 
 			for (size_t d = 0; d < out_rank; ++d) {
-				size_t a_idx = (a_padded[d] == 1) ? 0 : out_idx[d];
-				size_t b_idx = (b_padded[d] == 1) ? 0 : out_idx[d];
+				size_t a_idx = (a_padded_shape[d] == 1) ? 0 : out_idx[d];
+				size_t b_idx = (b_padded_shape[d] == 1) ? 0 : out_idx[d];
 
-				a_offset += a_idx * a_strides[d];
-				b_offset += b_idx * b_strides[d];
+				a_offset += a_idx * a_padded_strides[d];
+				b_offset += b_idx * b_padded_strides[d];
 			}
 
 			optr[linear] = static_cast<RT>(aptr[a_offset]) * static_cast<RT>(bptr[b_offset]);
@@ -229,7 +245,7 @@ namespace Inferno {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//
-	//  Function cpu_add
+	//  Function cpu_divide
 	//
 	//
 	//
@@ -237,36 +253,42 @@ namespace Inferno {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	
 	template<typename AT, typename BT, typename RT>
-	void cpu_divide(const AT* aptr, const BT* bptr, RT* optr, const std::vector<size_t>& ashape, const std::vector<size_t>& bshape, const std::vector<size_t>& out_shape, size_t out_numel)
+	void cpu_divide(const AT* aptr,
+		const BT* bptr,
+		RT* optr,
+		const std::vector<size_t>& ashape,
+		const std::vector<size_t>& astrides,
+		size_t aoffset,
+		const std::vector<size_t>& bshape,
+		const std::vector<size_t>& bstrides,
+		size_t boffset,
+		const std::vector<size_t>& out_shape,
+		size_t out_numel)
 	{
 		const size_t out_rank = out_shape.size();
 
 		// Left-pad A and B shapes to output rank
-		std::vector<size_t> a_padded(out_rank, 1);
-		std::vector<size_t> b_padded(out_rank, 1);
+		std::vector<size_t> a_padded_shape(out_rank, 1);
+		std::vector<size_t> b_padded_shape(out_rank, 1);
+
+		std::vector<size_t> a_padded_strides(out_rank, 1);
+		std::vector<size_t> b_padded_strides(out_rank, 1);
 
 		size_t a_rank_offset = out_rank - ashape.size();
 		size_t b_rank_offset = out_rank - bshape.size();
 
 		for (size_t i = 0; i < ashape.size(); ++i) {
-			a_padded[a_rank_offset + i] = ashape[i];
+			a_padded_shape[a_rank_offset + i] = ashape[i];
+			a_padded_strides[a_rank_offset + i] = astrides[i];
 		}
 
 		for (size_t i = 0; i < bshape.size(); ++i) {
-			b_padded[b_rank_offset + i] = bshape[i];
+			b_padded_shape[b_rank_offset + i] = bshape[i];
+			b_padded_strides[b_rank_offset + i] = bstrides[i];
 		}
 
-		// Build contiguous padded strides for A and B
-		std::vector<size_t> a_strides(out_rank, 1);
-		std::vector<size_t> b_strides(out_rank, 1);
-
-		if (out_rank > 0) {
-			for (int d = static_cast<int>(out_rank) - 2; d >= 0; --d) {
-				a_strides[d] = a_strides[d + 1] * a_padded[d + 1];
-				b_strides[d] = b_strides[d + 1] * b_padded[d + 1];
-			}
-		}
 
 		std::vector<size_t> out_idx(out_rank, 0);
 
@@ -280,21 +302,20 @@ namespace Inferno {
 			}
 
 			// Compute A and B offsets under broadcasting
-			size_t a_offset = 0;
-			size_t b_offset = 0;
+			size_t a_offset = aoffset;
+			size_t b_offset = boffset;
 
 			for (size_t d = 0; d < out_rank; ++d) {
-				size_t a_idx = (a_padded[d] == 1) ? 0 : out_idx[d];
-				size_t b_idx = (b_padded[d] == 1) ? 0 : out_idx[d];
+				size_t a_idx = (a_padded_shape[d] == 1) ? 0 : out_idx[d];
+				size_t b_idx = (b_padded_shape[d] == 1) ? 0 : out_idx[d];
 
-				a_offset += a_idx * a_strides[d];
-				b_offset += b_idx * b_strides[d];
+				a_offset += a_idx * a_padded_strides[d];
+				b_offset += b_idx * b_padded_strides[d];
 			}
 
 			optr[linear] = static_cast<RT>(aptr[a_offset]) / static_cast<RT>(bptr[b_offset]);
 		}
 	}
-
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

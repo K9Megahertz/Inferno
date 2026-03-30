@@ -14,6 +14,12 @@ namespace Inferno {
 		m_id = m_impl->id();
 	}
 
+	Tensor::Tensor(DType dtype, std::initializer_list<size_t> shape, std::string name, Inferno::Device device) {
+		m_impl = std::make_shared<TensorImpl>(dtype, shape, name, device);
+		m_device = device;
+		m_id = m_impl->id();
+	}
+
 
 	//Tensor::~Tensor() { 
 		//std::cout << "tensor bye: " << m_id << std::endl;
@@ -161,7 +167,7 @@ namespace Inferno {
 			os << "]\n";
 
 			//TODO: please print me out =(
-			//os << "offset=" << t.offset() << "\n";
+			os << "offset=" << tcpu.offset() << "\n";
 
 
 			auto p = GetImpl(tcpu);
@@ -170,7 +176,9 @@ namespace Inferno {
 			const RT* gptr = nullptr;
 
 				
-				
+			const std::vector<size_t>& shape = tcpu.shape();
+			const std::vector<size_t>& strides = tcpu.strides();
+			const size_t offset = tcpu.offset();			
 				
 
 			os << "data = [";
@@ -180,12 +188,29 @@ namespace Inferno {
 				size_t numdata = std::min((int)tcpu.numel(), 100);
 
 				dptr = p->data_as_ptr<AT>();
-				for (int i = 0; i < numdata; i++) {
-					os << std::fixed << std::setprecision(6) << static_cast<AT>(dptr[i]);
-					if (i < tcpu.numel() - 1) os << ", ";
+
+
+				
+
+				for (int linear = 0; linear < numdata; linear++) {
+
+
+					// Convert linear index -> multidimension al index
+					size_t remaining = linear;
+					size_t storage_index = tcpu.offset();
+
+					for (size_t dim = shape.size(); dim-- > 0;) {
+						size_t idx_in_dim = remaining % shape[dim];
+						remaining /= shape[dim];
+						storage_index += idx_in_dim * strides[dim];
+					}
+
+
+					os << std::fixed << std::setprecision(6) << static_cast<AT>(dptr[storage_index]);
+					if (linear < tcpu.numel() - 1) os << ", ";
 				}
 			}
-			
+
 			os << "]\n";
 
 
@@ -203,9 +228,22 @@ namespace Inferno {
 					const GT* gptr = GetImpl(g)->data_as_ptr<GT>();
 					size_t numgrad = std::min<size_t>(g.numel(), 2048);
 
-					for (size_t i = 0; i < numgrad; i++) {
-						os << std::fixed << std::setprecision(6) << gptr[i];
-						if (i + 1 < numgrad) os << ", ";
+					for (size_t linear = 0; linear < numgrad; linear++) {
+
+
+						// Convert linear index -> multidimension al index
+						size_t remaining = linear;
+						size_t storage_index = tcpu.offset();
+
+						for (size_t dim = shape.size(); dim-- > 0;) {
+							size_t idx_in_dim = remaining % shape[dim];
+							remaining /= shape[dim];
+							storage_index += idx_in_dim * strides[dim];
+						}
+
+
+						os << std::fixed << std::setprecision(6) << gptr[storage_index];
+						if (linear + 1 < numgrad) os << ", ";
 					}
 				});
 			
@@ -312,6 +350,25 @@ namespace Inferno {
 
 	std::string Tensor::name() const {
 		return m_impl->name();
+	}
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	//  Function offset
+	//
+	//
+	//
+	//
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	size_t& Tensor::offset() {
+		return m_impl->offset();
+	}
+
+	size_t& Tensor::offset() const {
+		return m_impl->offset();
 	}
 
 
@@ -460,32 +517,46 @@ namespace Inferno {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-	Tensor Tensor::to(const Device&& dst) const {
+	Tensor Tensor::to(const Device& dst) const {
 		if (device() == dst) {
 			return *this; // or return shallow copy / shared storage
 		}
 
-		Tensor out(dtype(), shape(), name(), dst);
+		//Tensor out(dtype(), shape(), name(), dst);
+		Tensor out;
 
-		size_t bytes = m_impl->nbytes();	
+		if (GetImpl(*this)->is_view()) {
+			out = Tensor(dtype(), GetImpl(*this)->get_base()->shape(), name(), dst);
+		}
+		else {
+			out = Tensor(dtype(), shape(), name(), dst);
+		}
+
+		//Tensor out(dtype(), shape(), name(), dst);
+		out.shape() = this->shape();
+		out.offset() = this->offset();
+		out.strides() = this->strides();
+
+		//size_t bytes = m_impl->nbytes();
+		size_t bytes = m_impl->data()->m_numbytes;
 
 		auto* src_ptr = GetImpl(*this)->raw_ptr();
 		auto* dst_ptr = GetImpl(out)->raw_ptr();
 
 		if (device().is_cpu() && dst.is_cuda()) {
-			cudaMemcpy(dst_ptr, src_ptr, bytes,cudaMemcpyHostToDevice);
+			check_cuda(cudaMemcpy(dst_ptr, src_ptr, bytes,cudaMemcpyHostToDevice), "Failed to memcpy in to");
 		}
 		else if (device().is_cuda() && dst.is_cpu()) {
-			cudaMemcpy(dst_ptr, src_ptr, bytes,cudaMemcpyDeviceToHost);			
+			check_cuda(cudaMemcpy(dst_ptr, src_ptr, bytes,cudaMemcpyDeviceToHost), "Failed to memcpy in to");
 		}
-		else if (device().is_cuda() && dst.is_cuda()) {
-			cudaMemcpy(dst_ptr, src_ptr, bytes,cudaMemcpyDeviceToDevice);
+		else if (device().is_cuda() && dst.is_cuda()) {			
+			check_cuda(cudaMemcpy(dst_ptr, src_ptr, bytes, cudaMemcpyDeviceToDevice), "Failed to memcpy in to");
 		}
 
 
 		if (GetImpl(*this)->grad()) {
 			Tensor t = *GetImpl(*this)->grad();
-			Tensor blah = t.to(std::move(dst));			
+			Tensor blah = t.to(dst);			
 			GetImpl(out)->set_grad(blah);
 
 		}
@@ -566,7 +637,7 @@ namespace Inferno {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//
-	//  Function zeroes_like
+	//  Function zeros_like
 	//
 	//
 	//
@@ -574,7 +645,7 @@ namespace Inferno {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	Tensor Tensor::zeroes_like(const Tensor& A)
+	Tensor Tensor::zeros_like(const Tensor& A)
 	{
 		return dispatchOne(A.dtype(), [&](auto T) {
 			using AT = typename decltype(T)::type;
@@ -676,18 +747,9 @@ namespace Inferno {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-	std::vector<size_t> Tensor::calculate_strides(std::vector<size_t> shape) {
-		std::vector<size_t> strides(shape.size());
-		size_t stride = 1;
-		for (int i = shape.size() - 1; i >= 0; i--) {
-			strides[i] = stride;
-			stride *= shape[i];
-		}
-		return strides;	
+	
 
-	}
-
-	std::vector<size_t> Tensor::calculate_strides(std::vector<size_t> shape) const {
+	std::vector<size_t> Tensor::calculate_strides(const std::vector<size_t>& shape) {
 		std::vector<size_t> strides(shape.size());
 		size_t stride = 1;
 		for (int i = shape.size() - 1; i >= 0; i--) {
@@ -710,7 +772,52 @@ namespace Inferno {
 
 	}
 
+	bool Tensor::requires_grad() {
+		return GetImpl(*this)->requires_grad();
+	}
 
+	bool Tensor::requires_grad() const {
+		return GetImpl(*this)->requires_grad();
+	}
+	
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	//  Function slice_impl()
+	//
+	//
+	//
+	//
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	Tensor Tensor::slice(int axis, const size_t start, const size_t end, const size_t step) {
+		return slice_impl(*this, axis, start, end, step);
+	}
+
+	
+	Tensor Tensor::reshape(const std::vector<size_t>& newshape) const {
+		if (!is_contiguous()) {
+			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "reshape only supported on contiguous tensors");
+			exit(1);
+		}
+
+		size_t old_numel = numel();
+		size_t new_numel = std::accumulate(newshape.begin(), newshape.end(), size_t{ 1 }, std::multiplies<size_t>());
+
+		if (old_numel != new_numel) {
+			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,
+				"reshape: new shape has different number of elements");
+			exit(1);
+		}
+
+
+		return reshape_impl(*this, newshape);
+	}
+	
+	bool Tensor::is_contiguous() const {
+		return m_impl->is_contiguous();
+	}
 
 
 	

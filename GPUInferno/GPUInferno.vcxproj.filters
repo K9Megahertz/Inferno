@@ -111,6 +111,15 @@
     <ClCompile Include="layers\module.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="layers\layernorm.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GradFN\slicebackward.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GradFN\reshapebackward.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="tensor.h">
@@ -240,6 +249,16 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="cuda\gpu_atomic.cuh" />
+    <ClInclude Include="layers\layernorm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cuda\cudamath.cuh" />
+    <ClInclude Include="GradFN\slicebackward.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GradFN\reshapebackward.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="cuda\cudaadd.cu" />
@@ -254,6 +273,8 @@
     <CudaCompile Include="cuda\cudasigmoid.cu" />
     <CudaCompile Include="cuda\cudasgdstep.cu" />
     <CudaCompile Include="cuda\cudaembedding.cu" />
-    <CudaCompile Include="cuda\cudascatteradd.cu" />
+    <CudaCompile Include="cuda\cudascatteraddembedding.cu" />
+    <CudaCompile Include="cuda\cudalayernorm.cu" />
+    <CudaCompile Include="cuda\cudascatteraddslice.cu" />
   </ItemGroup>
 </Project>

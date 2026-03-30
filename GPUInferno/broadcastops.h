@@ -4,7 +4,8 @@
 
 namespace Inferno {
 	Tensor sum_to_shape(const Tensor& src, const std::vector<size_t>& target_shape);
-	Tensor scatter_add(const Tensor &embeddings, const Tensor& token_ids, const Tensor& g_out);
+	Tensor scatter_add_embedding(const Tensor &embeddings, const Tensor& token_ids, const Tensor& g_out);
+	Tensor scatter_add_slice(Tensor& g_a, const Tensor& g_out, int axis, size_t start, size_t step);
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -57,7 +58,7 @@ namespace Inferno {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	template <typename AT, typename BT>
-	void cpu_scatter_add(const BT* gptr, const AT* tptr, BT* optr, size_t embed_dim, size_t numtokens) {
+	void cpu_scatter_add_embedding(const BT* gptr, const AT* tptr, BT* optr, size_t embed_dim, size_t numtokens) {
 
 
 		for (size_t t = 0; t < numtokens; t++) {
@@ -68,6 +69,53 @@ namespace Inferno {
 			for (size_t e = 0; e < embed_dim; e++) {
 				optr[obaseidx++] += gptr[gbaseidx++];
 			}
+		}
+	}
+
+	template <typename T>
+	void cpu_scatter_add_slice(
+		T* optr,
+		const T* gptr,
+		std::vector<size_t>& shape,
+		std::vector<size_t>& strides,
+		size_t offset,
+		std::vector<size_t>& out_shape,
+		std::vector<size_t>& out_strides,
+		size_t out_offset,
+		size_t onumel,
+		size_t axis,
+		size_t start,
+		size_t step) {
+
+		
+		std::vector<size_t> a_idx(shape.size());
+		std::vector<size_t> out_idx(out_shape.size());		
+
+		for (size_t linearidx = 0; linearidx < onumel; linearidx++) {
+
+			size_t tmp = linearidx;
+			size_t rank = out_shape.size();
+			for (int d = rank - 1; d >= 0; d--) {
+				out_idx[d] = tmp % out_shape[d];
+				tmp /= out_shape[d];
+			}
+
+			//map to A
+			a_idx = out_idx;
+			a_idx[axis] = start + out_idx[axis] * step;
+
+			//compute storage offsets
+			size_t outidx = out_offset;
+			size_t aidx = offset;
+
+			for (int d = 0; d < rank; ++d) {
+				outidx += out_idx[d] * out_strides[d];
+				aidx += a_idx[d] * strides[d];
+			}
+
+			//scatter
+			optr[aidx] += gptr[outidx];
+
 		}
 	}
 }

@@ -132,19 +132,6 @@ namespace Inferno {
 	}*/
 
 
-	class Tensor;
-
-	Tensor add(const Tensor& A, const Tensor& B);
-	Tensor subtract(const Tensor& A, const Tensor& B);
-	Tensor multiply(const Tensor& A, const Tensor& B);
-	Tensor divide(const Tensor& A, const Tensor& B);
-
-	Tensor transpose_impl(const Tensor& A, int dima, int dimb);
-
-	Tensor negate(const Tensor& A);
-
-	template <typename AT, typename BT, typename RT>
-	void cpu_add_tensors(const AT aptr, const BT bptr, RT optr, std::vector<size_t> ashape, std::vector<size_t> bshape, std::vector<size_t> oshape, size_t numel);
 	
 	
 
@@ -158,7 +145,9 @@ namespace Inferno {
 		friend Tensor multiply(const Tensor& A, const Tensor& B);
 		friend Tensor divide(const Tensor& A, const Tensor& B);
 
-		friend Tensor transpose_impl(const Tensor& A, int dima, int dimb);
+		friend Tensor transpose_impl(const Tensor& A, int dima, int dimb);		
+		friend Tensor slice_impl(const Tensor& A, int axis, const size_t start, const size_t end, const size_t step);
+		friend Tensor reshape_impl(const Tensor& A, const std::vector<size_t>& newshape);
 
 		friend Tensor negate(const Tensor& A);
 
@@ -169,13 +158,30 @@ namespace Inferno {
 
 		Tensor() = default;
 		Tensor(DType dtype, std::vector<size_t> shape, std::string name, Inferno::Device device);
+		Tensor(DType dtype, std::initializer_list<size_t> shape, std::string name, Inferno::Device device);
 
 		template <typename T>
-		Tensor(DType dtype, const std::vector<T>& data, std::vector<size_t> shape, std::string name, Inferno::Device device = Inferno::Device::cpu()) {
+		Tensor(DType dtype, const std::initializer_list<T>& data, std::initializer_list<size_t> shape, std::string name, Inferno::Device device = Inferno::Device::cpu()) {
 			m_impl = std::make_shared<TensorImpl>(dtype,data,shape,name,device);
 			m_device = device;
 			m_id = m_impl->id();
 		
+		}
+
+		template <typename T>
+		Tensor(DType dtype, const std::vector<T>& data, std::initializer_list<size_t> shape, std::string name, Inferno::Device device = Inferno::Device::cpu()) {
+			m_impl = std::make_shared<TensorImpl>(dtype, data, shape, name, device);
+			m_device = device;
+			m_id = m_impl->id();
+
+		}
+
+		template <typename T>
+		Tensor(DType dtype, std::initializer_list<size_t> shape, std::string name, Inferno::Device device = Inferno::Device::cpu()) {
+			m_impl = std::make_shared<TensorImpl>(dtype, shape, name, device);
+			m_device = device;
+			m_id = m_impl->id();
+
 		}
 
 		~Tensor() = default;
@@ -183,7 +189,7 @@ namespace Inferno {
 		//Device defs
 		Device& device();
 		const Device& device() const { return m_device; }
-		Tensor to(const Device&& dst) const;
+		Tensor to(const Device& dst) const;
 
 		//overload defs
 		Tensor operator+(const Tensor& other) const;
@@ -209,21 +215,27 @@ namespace Inferno {
 		std::vector<size_t>& shape() const;
 		std::vector<size_t>& strides();
 		std::vector<size_t>& strides() const;
+		size_t& offset();
+		size_t& offset() const;
 		std::string name();
 		std::string name() const;
 		size_t ndim();
 		size_t ndim() const;
+		bool requires_grad();
+		bool requires_grad() const;
+		
 
 
 		//properties defs
 		size_t size() const;
 		size_t numel() const;
 		size_t dtype_size(DType dtype);
+		bool is_contiguous() const;
 
 
 		//functional
-		std::vector<size_t> calculate_strides(std::vector<size_t> shape);
-		std::vector<size_t> calculate_strides(std::vector<size_t> shape) const;
+		//std::vector<size_t> calculate_strides(std::vector<size_t> shape);
+		static std::vector<size_t> calculate_strides(const std::vector<size_t>& shape);
 		
 
 		
@@ -234,15 +246,16 @@ namespace Inferno {
 
 		//dup defs
 		static Tensor ones_like(const Tensor& t);
-		static Tensor zeroes_like(const Tensor& A);
+		static Tensor zeros_like(const Tensor& A);
 
 
 		//modifications
 		Tensor transpose(int dima, int dimb);
 		Tensor transpose(int dima, int dimb) const;		
 		Tensor unsqueeze(int dim);
-		Tensor unsqueeze(int dim) const;
-
+		Tensor unsqueeze(int dim) const;		
+		Tensor slice(int axis, const size_t start, const size_t end, const size_t step = 1);
+		Tensor reshape(const std::vector<size_t>& newshape) const;
 		void backward();
 
 
@@ -280,32 +293,40 @@ namespace Inferno {
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		template <typename T>
-		static Tensor randn(const std::vector<size_t>& shape, const std::string& name, Inferno::Device device = Inferno::Device::cpu()) {
+		
+		static Tensor randn(Inferno::DType dtype, const std::initializer_list<size_t>& shape, const std::string& name, Inferno::Device device = Inferno::Device::cpu()) {
 			// Compute total number of elements
 			int total_size = 1;
 			for (int dim : shape) {
 				total_size *= dim;
 			}
 
-			std::vector<T> data;
-			// Generate random float values using your RandomGenerator
-			if constexpr (std::is_same_v<T, float>) {
-				data = Inferno::RandomGenerator::generateRandomFloatVector(total_size, -1.0f, 1.0f);
-			}
+			switch (dtype) {
+			case DType::Float32:
+				return Tensor(dtype,
+					Inferno::RandomGenerator::generateRandomFloatVector(total_size, -1.0f, 1.0f),
+					shape,
+					name,
+					device);
 
-			// Generate random float values using your RandomGenerator
-			if constexpr (std::is_same_v<T, double>) {
-				data = Inferno::RandomGenerator::generateRandomDoubleVector(total_size, -0.1f, 0.1f);
-			}
+			case DType::Float64:
+				return Tensor(dtype,
+					Inferno::RandomGenerator::generateRandomDoubleVector(total_size, -0.1, 0.1),
+					shape,
+					name,
+					device);
 
-			// Generate random float values using your RandomGenerator
-			if constexpr (std::is_same_v<T, int>) {
-				data = Inferno::RandomGenerator::generateRandomIntVector(total_size, -0.1f, 0.1f);
-			}
+			case DType::Int32:
+				return Tensor(dtype,
+					Inferno::RandomGenerator::generateRandomIntVector(total_size, -1, 1),
+					shape,
+					name,
+					device);
 
-			// Create and return the tensor
-			return Tensor(Inferno::DType::Float32, data, shape, name, device);
+			default:
+				Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "Unsupported dtype in randn");
+				exit(1);
+			}
 		}
 
 

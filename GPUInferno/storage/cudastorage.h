@@ -10,7 +10,7 @@ namespace Inferno {
 
 	public:
 
-		CUDAStorage(size_t bytes);
+		CUDAStorage(size_t numbytes);
 		~CUDAStorage();
 
 		void* raw_ptr() { return ptr; }

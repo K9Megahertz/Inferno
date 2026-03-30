@@ -91,8 +91,7 @@ namespace Inferno {
 		if (it == s_grad_map->end())
 			s_grad_map->emplace(e, grad);			
 		else
-			it->second = it->second + grad;
-			//it->second = add_nograd(it->second, grad);
+			it->second = it->second + grad;			
 	}
 
 	Tensor Engine::grad_in(Node* node, int slot)

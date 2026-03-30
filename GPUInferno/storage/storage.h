@@ -26,7 +26,7 @@ namespace Inferno {
 
 
 		virtual void* raw_ptr() = 0;
-		size_t m_count;
+		size_t m_numbytes;
 		
 
 

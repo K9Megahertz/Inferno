@@ -16,6 +16,7 @@
 #include "layers/module.h"
 #include "layers/linear.h"
 #include "layers/embedding.h"
+#include "layers/layernorm.h"
 
 #include "loss/loss.h"
 

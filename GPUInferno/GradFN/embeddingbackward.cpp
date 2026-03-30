@@ -15,7 +15,7 @@ namespace Inferno {
 		// upstream gradient dL/d(output)
 		Tensor g_out = Engine::grad_in(this, 0);
 		
-		Tensor g_a = scatter_add(m_embeddings, m_token_ids, g_out);
+		Tensor g_a = scatter_add_embedding(m_embeddings, m_token_ids, g_out);
 
 		// find parent nodes
 		auto na = GetImpl(m_embeddings)->grad_edge();

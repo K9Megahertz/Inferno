@@ -14,9 +14,10 @@ namespace Inferno {
 
     template <typename AT>
     void cuda_fill(AT* aptr, const AT value, size_t N) {
-        dim3 block(256);
-        dim3 grid((N + block.x - 1) / block.x);
-        cuda_fill_kernel << <grid, block >> > (aptr, value, N);
+
+        constexpr int threads = 256;
+        int blocks = static_cast<int>((N + threads - 1) / threads); 
+        cuda_fill_kernel << <blocks, threads >> > (aptr, value, N);
     }
 
     template void cuda_fill<int>(int*, const int, size_t);

@@ -6,6 +6,8 @@
 #include "GradFN/negatebackward.h"
 #include "GradFN/mmbackward.h"
 #include "GradFN/mselossbackward.h"
+#include "GradFN/slicebackward.h"
+#include "GradFN/reshapebackward.h"
 
 
 namespace Inferno {
@@ -61,7 +63,7 @@ namespace Inferno {
 				////////////////////////////////////////////////////
 			case DeviceType::CPU:
 				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CPU Code path");
-				cpu_add(aptr, bptr, optr, A.shape(), B.shape(), out.shape(), out.numel());
+				cpu_add(aptr, bptr, optr, A.shape(), A.strides(), A.offset(), B.shape(), B.strides(), B.offset(), out.shape(), out.numel());
 				break;
 
 				////////////////////////////////////////////////////
@@ -69,7 +71,7 @@ namespace Inferno {
 				////////////////////////////////////////////////////
 			case DeviceType::CUDA:
 				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CUDA Code path");
-				cuda_add(aptr, bptr, optr, A.shape(), B.shape(), out.shape(), out.numel());
+				cuda_add(aptr, bptr, optr, A.shape(), A.strides(), A.offset(), B.shape(), B.strides(), B.offset(), out.shape(), out.numel());
 				break;
 
 			default:
@@ -77,7 +79,7 @@ namespace Inferno {
 				exit(1);
 			}
 
-			if (Inferno::grad_enabled) {
+			if ((Inferno::grad_enabled) && (A.requires_grad() || B.requires_grad())) {
 				implout->gradfn() = std::make_shared<AddBackward>(A, B);
 			}
 
@@ -85,81 +87,6 @@ namespace Inferno {
 			return out;
 		});
 	}
-
-
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//
-	//  Function add_nograd
-	//
-	//
-	//
-	//
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	/*Tensor add_nograd(const Tensor& A, const Tensor& B) {
-
-
-		if (A.device() != B.device()) {
-			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "Incompatible device types on tensor parameters in Add");
-			exit(1);
-		}
-
-		return dispatchTwo(A.dtype(), B.dtype(), [&](auto TA, auto TB) {
-			using AT = typename decltype(TA)::type;
-			using BT = typename decltype(TB)::type;
-			using RT = promote_t<AT, BT>;
-
-
-
-			std::vector<size_t> broadcast_shape = Tensor::get_broadcast_shape(A.shape(), B.shape());
-
-			auto implA = GetImpl(A);
-			auto implB = GetImpl(B);
-
-			//get pointers to data
-			auto aptr = implA->data_as_ptr<AT>();
-			auto bptr = implB->data_as_ptr<BT>();
-
-
-			Inferno::Tensor out(dtype_of_v<RT>, broadcast_shape, "add_nograd", A.device());
-
-			auto implout = GetImpl(out);
-			auto optr = implout->data_as_ptr<RT>();
-
-
-
-			switch (A.device().m_type) {
-
-				////////////////////////////////////////////////////
-				// CPU Code Path
-				////////////////////////////////////////////////////
-			case DeviceType::CPU:
-				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CPU Code path");
-				cpu_add(aptr, bptr, optr, A.shape(), B.shape(), out.shape(), out.numel());
-				break;
-
-				////////////////////////////////////////////////////
-				// CUDA Code Path
-				////////////////////////////////////////////////////
-			case DeviceType::CUDA:
-				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CUDA Code path");
-				cuda_add(aptr, bptr, optr, A.shape(), B.shape(), out.shape(), out.numel());
-				break;
-
-			default:
-				Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "Invalid device type");
-				exit(1);
-			}
-
-
-			implout->gradfn() = nullptr;
-
-
-			return out;
-			});
-	}*/
 
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -212,7 +139,7 @@ namespace Inferno {
 				////////////////////////////////////////////////////
 			case DeviceType::CPU:
 				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CPU Code path");
-				cpu_subtract(aptr, bptr, optr, A.shape(), B.shape(), out.shape(), out.numel());
+				cpu_subtract(aptr, bptr, optr, A.shape(), A.strides(), A.offset(), B.shape(), B.strides(), B.offset(), out.shape(), out.numel());
 				break;
 
 				////////////////////////////////////////////////////
@@ -220,7 +147,7 @@ namespace Inferno {
 				////////////////////////////////////////////////////
 			case DeviceType::CUDA:
 				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CUDA Code path");
-				cuda_subtract(aptr, bptr, optr, A.shape(), B.shape(), out.shape(), out.numel());
+				cuda_subtract(aptr, bptr, optr, A.shape(), A.strides(), A.offset(), B.shape(), B.strides(), B.offset(), out.shape(), out.numel());
 				break;
 
 			default:
@@ -228,7 +155,7 @@ namespace Inferno {
 				exit(1);
 			}
 
-			if (Inferno::grad_enabled) {
+			if ((Inferno::grad_enabled) && (A.requires_grad() || B.requires_grad())) {
 				implout->gradfn() = std::make_shared<SubtractBackward>(A, B);
 			}
 
@@ -284,7 +211,7 @@ namespace Inferno {
 				////////////////////////////////////////////////////
 			case DeviceType::CPU:
 				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CPU Code path");
-				cpu_multiply(aptr, bptr, optr, A.shape(), B.shape(), out.shape(), out.numel());
+				cpu_multiply(aptr, bptr, optr, A.shape(), A.strides(), A.offset(), B.shape(), B.strides(), B.offset(), out.shape(), out.numel());
 				break;
 
 				////////////////////////////////////////////////////
@@ -292,7 +219,7 @@ namespace Inferno {
 				////////////////////////////////////////////////////
 			case DeviceType::CUDA:
 				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CUDA Code path");				
-				cuda_multiply<AT, BT, RT>(aptr, bptr, optr, A.shape(), B.shape(), out.shape(), out.numel());
+				cuda_multiply(aptr, bptr, optr, A.shape(), A.strides(), A.offset(), B.shape(), B.strides(), B.offset(), out.shape(), out.numel());
 				break;
 
 			default:
@@ -300,7 +227,7 @@ namespace Inferno {
 				exit(1);
 			}
 
-			if (Inferno::grad_enabled) {
+			if ((Inferno::grad_enabled) && (A.requires_grad() || B.requires_grad())) {
 				implout->gradfn() = std::make_shared<MultiplyBackward>(A, B);
 			}
 
@@ -364,7 +291,7 @@ namespace Inferno {
 				////////////////////////////////////////////////////
 			case DeviceType::CPU:
 				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CPU Code path");
-				cpu_divide(aptr, bptr, optr, A.shape(), B.shape(), out.shape(), out.numel());
+				cpu_divide(aptr, bptr, optr, A.shape(), A.strides(), A.offset(), B.shape(), B.strides(), B.offset(), out.shape(), out.numel());
 				break;
 
 				////////////////////////////////////////////////////
@@ -372,7 +299,7 @@ namespace Inferno {
 				////////////////////////////////////////////////////
 			case DeviceType::CUDA:
 				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CUDA Code path");
-				cuda_divide(aptr, bptr, optr, A.shape(), B.shape(), out.shape(), out.numel());
+				cuda_divide(aptr, bptr, optr, A.shape(), A.strides(), A.offset(), B.shape(), B.strides(), B.offset(), out.shape(), out.numel());
 				break;
 
 			default:
@@ -380,7 +307,7 @@ namespace Inferno {
 				exit(1);
 			}
 
-			if (Inferno::grad_enabled) {
+			if ((Inferno::grad_enabled) && (A.requires_grad() || B.requires_grad())) {
 				implout->gradfn() = std::make_shared<DivideBackward>(A, B);
 			}
 
@@ -442,7 +369,7 @@ namespace Inferno {
 				exit(1);
 			}
 
-			if (Inferno::grad_enabled) {
+			if ((Inferno::grad_enabled) && (A.requires_grad())) {
 				implout->gradfn() = std::make_shared<NegateBackward>(A);
 			}
 
@@ -496,7 +423,7 @@ namespace Inferno {
 		out.strides() = out.calculate_strides(out.shape());
 
 		
-		if (Inferno::grad_enabled) {
+		if ((Inferno::grad_enabled) && (A.requires_grad() || B.requires_grad())) {
 			GetImpl(out)->gradfn() = std::make_shared<MMBackward>(A, B);
 		}
 			
@@ -717,8 +644,13 @@ namespace Inferno {
 		impl->offset() = new_storage_offset;
 		impl->dtype() = base_impl->dtype();
 		impl->device() = base_impl->device();
-		//impl->set_is_view(true);
-		//impl->set_base(base);
+		impl->set_is_view(true);
+
+		if (base_impl->is_view()) 
+			impl->set_base(base_impl->get_base());
+		else
+			impl->set_base(GetImpl(base));
+		
 		impl->name() = name;
 		impl->id() = Inferno::IDBroker::GenID();			
 		//Inferno::NodeTracker::addID(this->m_id, this->m_name);
@@ -726,6 +658,91 @@ namespace Inferno {
 		out.device() = base.device();
 		SetImpl(out,impl);
 		return out;
+	}
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	//  Function slice_impl
+	//
+	//
+	//
+	//
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	Tensor slice_impl(const Tensor& A, int axis, const size_t start, const size_t end, const size_t step) {
+
+		if (axis < 0)
+			axis += static_cast<int>(A.shape().size());
+
+		if (axis < 0 || axis >= static_cast<int>(A.shape().size())) {
+			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,"Slice axis out of bounds.Axis specified : " + std::to_string(axis) + " Tensor rank: " + std::to_string(A.shape().size())
+			);
+			exit(1);
+		}
+
+		if (step == 0) {
+			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "Slice step cannot be 0.");
+			exit(1);
+		}
+
+		const size_t axis_size = A.shape()[axis];
+
+		if (start >= axis_size) {
+			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,"Slice start out of bounds. Start: " + std::to_string(start) + " Axis size: " + std::to_string(axis_size));
+			exit(1);
+		}
+
+		if (end >= axis_size) {
+			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,"Slice end out of bounds. End: " + std::to_string(end) + " Axis size: " + std::to_string(axis_size));
+			exit(1);
+		}
+
+		if (end < start) {
+			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,"Slice end must be >= start. Start: " + std::to_string(start) +	" End: " + std::to_string(end));
+			exit(1);
+		}
+
+		std::vector<size_t> newshape = A.shape();
+		std::vector<size_t> newstrides = A.strides();
+
+		// inclusive end:
+		// count = ceil((end - start + 1) / step)
+		const size_t span = end - start;
+		const size_t count = (span / step) + 1;
+
+		newshape[axis] = count;
+		newstrides[axis] *= step;
+
+		size_t offset = A.offset() + A.strides()[axis] * start;
+
+		Tensor view = make_view(A, newshape, newstrides, offset, "slice_of_" + A.name());
+
+		if ((Inferno::grad_enabled) && (A.requires_grad())) {
+			GetImpl(view)->gradfn() = std::make_shared<SliceBackward>(A, axis, start, step, view.shape());
+			
+		}
+
+		return view;
+	}
+
+
+	Tensor reshape_impl(const Tensor& A, const std::vector<size_t>& newshape) {
+
+		std::vector<size_t> newstrides = Tensor::calculate_strides(newshape);
+
+		Tensor out = make_view(A, newshape, newstrides, A.offset(), "reshape_of_" + A.name());
+
+		if ((Inferno::grad_enabled) && (A.requires_grad())) {
+			GetImpl(out)->gradfn() = std::make_shared<ReshapeBackward>(A);
+
+		}
+
+
+		return out;
+
+
 	}
 
 }

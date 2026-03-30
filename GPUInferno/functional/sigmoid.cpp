@@ -45,8 +45,9 @@ namespace Inferno {
 				exit(1);
 			}
 
-
-			implout->gradfn() = std::make_shared<SigmoidBackward>(A,out);
+			if ((Inferno::grad_enabled) && (A.requires_grad() || out.requires_grad())) {
+				implout->gradfn() = std::make_shared<SigmoidBackward>(A, out);
+			}
 
 
 			return out;

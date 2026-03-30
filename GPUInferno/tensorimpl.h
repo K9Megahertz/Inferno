@@ -38,16 +38,19 @@ namespace Inferno {
 
 		TensorImpl();		
 		TensorImpl(DType type, std::vector<size_t> shape, std::string name, Inferno::Device device);
+		TensorImpl(DType type, std::initializer_list<size_t> shape, std::string name, Inferno::Device device);
 
 		template <typename T>
 		TensorImpl(DType type, const std::vector<T>& data, std::vector<size_t> shape, std::string name, Inferno::Device device) {
 			m_device = device;
 			m_dtype = type;
 			m_shape = shape;
+			m_offset = 0;
 			m_name = name;
 			m_strides = calculate_strides(shape);
 			m_grad = nullptr;
 			m_requires_grad = true;
+			m_isview = false;
 
 
 			//TODO: validate T == dtype
@@ -60,6 +63,44 @@ namespace Inferno {
 			else if (device.m_type == DeviceType::CUDA) {
 				m_data = std::make_shared<CUDAStorage>(bytes);
 				cudaError_t err = cudaMemcpy(m_data->raw_ptr(), data.data(), bytes, cudaMemcpyHostToDevice);
+				if (err != cudaSuccess) {
+					Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "Could not cudaMemcpy in TensorImpl constructor.");
+					exit(1);
+				}
+			}
+			else {
+				Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "Attempt to create TensorImpl with unknown device type.");
+				exit(1);
+			}
+
+			m_id = Inferno::IDBroker::GenID();
+			Inferno::NodeTracker::addID(this->m_id, this->m_name);
+
+		}
+
+		template <typename T>
+		TensorImpl(DType type, const std::initializer_list<T>& data, std::initializer_list<size_t> shape, std::string name, Inferno::Device device) {
+			m_device = device;
+			m_dtype = type;
+			m_shape = shape;
+			m_offset = 0;
+			m_name = name;
+			m_strides = calculate_strides(shape);
+			m_grad = nullptr;
+			m_requires_grad = true;
+			m_isview = false;
+
+
+			//TODO: validate T == dtype
+			size_t bytes = data.size() * sizeof(T);
+
+			if (device.m_type == DeviceType::CPU) {
+				m_data = std::make_shared<CPUStorage>(bytes);
+				std::memcpy(m_data->raw_ptr(), data.begin(), bytes);
+			}
+			else if (device.m_type == DeviceType::CUDA) {
+				m_data = std::make_shared<CUDAStorage>(bytes);
+				cudaError_t err = cudaMemcpy(m_data->raw_ptr(), data.begin(), bytes, cudaMemcpyHostToDevice);
 				if (err != cudaSuccess) {
 					Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "Could not cudaMemcpy in TensorImpl constructor.");
 					exit(1);
@@ -128,6 +169,8 @@ namespace Inferno {
 		Device& device();
 		const Device& device() const;
 
+		bool& requires_grad();		
+
 		size_t numel() const;
 
 		inline size_t dtype_size(DType dtype);
@@ -136,6 +179,13 @@ namespace Inferno {
 		std::vector<size_t> calculate_strides(std::vector<size_t> shape);
 
 		void set_grad(Tensor& g);
+
+		void set_is_view(bool flag);
+		bool is_view();
+		void set_base(const std::shared_ptr<TensorImpl>& base);
+		std::shared_ptr<TensorImpl> get_base();
+
+		bool is_contiguous() const;
 
 	private:
 
@@ -153,6 +203,8 @@ namespace Inferno {
 		size_t m_gradcount;
 		DType m_dtype;
 		bool m_requires_grad;
+		bool m_isview;
+		std::weak_ptr<TensorImpl>  m_base;
 		int m_id;
 
 	};

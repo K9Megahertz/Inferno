@@ -4,8 +4,9 @@ namespace  Inferno {
 
 
 
-    CUDAStorage::CUDAStorage(size_t bytes) {
-        cudaMalloc(&ptr, bytes);
+    CUDAStorage::CUDAStorage(size_t numbytes) {
+        cudaMalloc(&ptr, numbytes);
+        m_numbytes = numbytes;
     }
 
     CUDAStorage::~CUDAStorage() {

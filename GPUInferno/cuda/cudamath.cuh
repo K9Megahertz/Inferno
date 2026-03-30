@@ -1,0 +1,18 @@
+template<typename T>
+__device__ T cuda_sqrt(T x);
+
+
+template<>
+__device__ int cuda_sqrt<int>(int x) {
+    return sqrtf(static_cast<float>(x));
+}
+
+template<>
+__device__ float cuda_sqrt<float>(float x) {
+    return sqrtf(x);
+}
+
+template<>
+__device__ double cuda_sqrt<double>(double x) {
+    return sqrt(x);
+}

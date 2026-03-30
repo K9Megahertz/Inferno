@@ -1,8 +1,8 @@
 #include "inferno.h"
 #include "tests/tests.h"
 
-Inferno::Device device = Inferno::Device::cpu();
-//Inferno::Device device = Inferno::Device::cuda(0);
+//Inferno::Device device = Inferno::Device::cpu();
+Inferno::Device device = Inferno::Device::cuda(0);
 
 
 
@@ -107,7 +107,7 @@ void GenerateSampleData(std::vector<std::vector<float>>& inputs, std::vector<std
 }
 
 
-class PositionalEncoding : public Inferno::Module {
+/*class PositionalEncoding : public Inferno::Module {
 
 
 public:
@@ -151,11 +151,227 @@ public:
 
 };
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//  Class MultiHeadAttention
+//
+//
+//
+//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+class MultiHeadAttention : public Inferno::Module {
+public:
+	MultiHeadAttention(size_t embed_dim, size_t num_heads)
+		: m_embed_dim(embed_dim),
+		m_num_heads(num_heads),
+		m_head_dim(embed_dim / num_heads),
+		W_out(embed_dim, embed_dim)
+
+	{
+
+		Wq_layers.reserve(m_num_heads);
+		Wk_layers.reserve(m_num_heads);
+		Wv_layers.reserve(m_num_heads);
+
+		for (size_t i = 0; i < m_num_heads; ++i) {
+			Wq_layers.emplace_back(m_embed_dim, m_head_dim);
+			Wk_layers.emplace_back(m_embed_dim, m_head_dim);
+			Wv_layers.emplace_back(m_embed_dim, m_head_dim);
+
+			register_module(&Wq_layers.back());
+			register_module(&Wk_layers.back());
+			register_module(&Wv_layers.back());
+		}
+
+		// final output projection after concatenation		
+		register_module(&W_out);
+
+	}
+
+	Inferno::Tensor forward(Inferno::Tensor& x) override {
+		std::vector<Inferno::Tensor> heads;
+
+
+
+		for (int i = 0; i < m_num_heads; ++i) {
+			Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "Head: " + std::to_string(i));
+			auto q = Wq_layers[i].forward(x);
+			auto k = Wk_layers[i].forward(x);
+			auto v = Wv_layers[i].forward(x);
+
+			auto attn_scores = Inferno::matmul(q, k.transpose(-1, -2)) / std::sqrt(static_cast<float>(m_head_dim));
+
+			auto attn_probs = Inferno::softmax(attn_scores, -1);
+			auto head = Inferno::matmul(attn_probs, v);
+
+			heads.push_back(head);
+		}
+
+		// concatenate heads along embedding dim
+		Inferno::Tensor concat = Inferno::concat(heads, -1);
+
+		return W_out.forward(concat);
+	}
+
+private:
+	size_t m_embed_dim;
+	size_t m_num_heads;
+	size_t m_head_dim;
+
+	std::vector<Inferno::Linear> Wq_layers;
+	std::vector<Inferno::Linear> Wk_layers;
+	std::vector<Inferno::Linear> Wv_layers;
+	Inferno::Linear W_out;
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//  Class TransformerBlock
+//
+//
+//
+//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+class TransformerBlock : public Inferno::Module {
+public:
+	TransformerBlock(size_t embed_dim, size_t nheads)
+		: attn(embed_dim, nheads),
+		layernorm1(embed_dim),
+		layernorm2(embed_dim),
+		feedforward1(embed_dim, 4 * embed_dim),
+		feedforward2(4 * embed_dim, embed_dim)
+	{
+		register_module(&attn);
+		register_module(&layernorm1);
+		register_module(&layernorm2);
+		register_module(&feedforward1);
+		register_module(&feedforward2);
+	}
+
+	Inferno::Tensor forward(Inferno::Tensor& x) override {
+		auto normed = layernorm1.forward(x);
+		auto attn_out = attn.forward(normed);
+		x = x + attn_out;
+		auto normed2 = layernorm2.forward(x);
+		auto ff = feedforward2.forward(Inferno::gelu(feedforward1.forward(normed2)));
+		return x + ff;
+	}
+
+private:
+	MultiHeadAttention attn;
+	Inferno::LayerNorm layernorm1, layernorm2;
+	Inferno::Linear feedforward1, feedforward2;
+};
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 //  Class GPTModel
+//
+//
+//
+//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class GPTModel : public Inferno::Module {
+
+public:
+
+
+
+	GPTModel(size_t vocab_size, size_t context_size, size_t embed_dim, size_t nheads, size_t nblocks) :
+		emb1(vocab_size, embed_dim),
+		pos_enc(context_size, embed_dim),
+		linear1(embed_dim, vocab_size),
+		layernorm1(embed_dim) {
+
+		m_embed_dim = embed_dim;
+		m_context_size = context_size;
+		m_vocab_size = vocab_size;
+
+		//TODO: add these to the constructors?
+		this->register_module(&emb1);
+		this->register_module(&pos_enc);
+
+		transblks.reserve(nblocks);
+		for (size_t i = 0; i < nblocks; i++) {
+			transblks.emplace_back(embed_dim, nheads);  // constructs Head(i)
+			this->register_module(&transblks[i]);
+		}
+
+		this->register_module(&linear1);
+		this->register_module(&layernorm1);
+
+
+	}
+
+	Inferno::Tensor forward(Inferno::Tensor& input) {
+
+
+		//Get embedding vectors
+		Inferno::Tensor x = emb1.forward(input);
+
+		//Add positional encoding
+		x = pos_enc.forward(x);
+
+		// pump it through the Transformer blocks
+		for (int blk_idx = 0; blk_idx < transblks.size(); blk_idx++) {
+			//for (TransformerBlock tblk : transblks) {
+			Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "Block: " + std::to_string(blk_idx));
+			x = transblks[blk_idx].forward(x);
+		}
+		//Layer norm
+		//std::cout << "LayerNorm" << std::endl;
+		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "LayerNorm");
+		x = layernorm1.forward(x);
+		std::cout << x << std::endl;
+		//Linear
+		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "Linear");
+		x = linear1.forward(x);
+		std::cout << x << std::endl;
+		//Softmax
+		//Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "SoftMax");
+		//x = Inferno::softmax(x);
+		std::cout << x << std::endl;
+
+		std::cout << "next logits slice" << std::endl;
+		Inferno::Tensor next_logits = x.slice(-2, m_context_size - 1, m_context_size - 1);
+		std::cout << next_logits << std::endl;
+
+		//Inferno::Tensor out = Inferno::softmax(next_logits);
+
+		return next_logits;
+	}
+
+	Inferno::Embedding emb1;
+	PositionalEncoding pos_enc;
+	std::vector<TransformerBlock> transblks;
+	Inferno::Linear linear1;
+	Inferno::LayerNorm layernorm1;
+
+	size_t m_context_size;
+	size_t m_embed_dim;
+	size_t m_vocab_size;
+
+
+
+
+};*/
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//  Class MyModel
 //
 //
 //
@@ -233,54 +449,41 @@ int main() {
 	//RunTests();
 	
 
-	std::cout << "break";
+		
+	Inferno::Tensor input = Inferno::Tensor::randn(Inferno::DType::Float32, { 784 }, "input", device);	
+	Inferno::Tensor target(Inferno::DType::Float32, {1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, { 10 }, "target", device);
+
+	Inferno::Tensor tokens(Inferno::DType::Int32, {42, 13, 1, 0, 99, 34, 23, 78, 1, 25 }, { 10 }, "tokens", device);
+	
+
+	Inferno::Tensor normfwd(Inferno::DType::Float32, std::vector<float> {0.2, 0.1, 0.3, 0.5, 0.1, 0.1}, { 2,3 }, "normfwd", device);
+
+	std::cout << normfwd << std::endl;
+	Inferno::Tensor newshape = normfwd.reshape({3, 2});
+
+	std::cout << newshape << std::endl;
 
 	
-	
-	Inferno::Tensor input(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(784, -1.0f, 1.0f), { 784 }, "input", device);
-	
-	//Inferno::Tensor input(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(10, -1.0f, 1.0f), { 10 }, "input", device);	
-	//Inferno::Tensor input(Inferno::DType::Float32, std::vector<float>{0.5}, {1}, "input", Inferno::Device::cuda(0));
-	
-	//Inferno::Tensor target(Inferno::DType::Float32, std::vector<float> {1, 0, 1, 0, 1, 0, 1, 0, 1, 0 }, { 10 }, "target", Inferno::Device::cpu());
-	Inferno::Tensor target(Inferno::DType::Float32, std::vector<float> {1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, { 10 }, "target", device);
 
-	Inferno::Tensor tokens(Inferno::DType::Int32, std::vector<int> {42, 13, 1, 0, 99, 34, 23, 78, 1, 25 }, { 10 }, "tokens", device);
-	//Inferno::Tensor tokens(Inferno::DType::Int32, std::vector<int> {0}, { 1 }, "tokens", device);
-
-	//Inferno::Tensor target(Inferno::DType::Float32, std::vector<float> {1, 0, 1, 0, 1, 0, 1, 0, 1, 0 }, { 10 }, "target", Inferno::Device::cuda(0));
-	//Inferno::Tensor target(Inferno::DType::Float32, std::vector<float> {0, 0, 0, 0, 0, 0, 0, 0, 0, 1 }, { 10 }, "target", Inferno::Device::cuda(0));
-	//Inferno::Tensor target(Inferno::DType::Float32, std::vector<float> {1}, { 1 }, "target", Inferno::Device::cuda(0));
-
-	//Inferno::Tensor b(Inferno::DType::Float32, std::vector<float> {1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0}, { 5,6 }, "b", Inferno::Device::cpu());
-
-	//Inferno::Tensor a(Inferno::DType::Float32, std::vector<float> {1, 2, 3, 4, 5 }, { 5 }, "a", Inferno::Device::cuda(0));
-	//Inferno::Tensor b(Inferno::DType::Float32, std::vector<float> {1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0}, { 5,6 }, "b", Inferno::Device::cuda(0));
-
-
-	//Inferno::Tensor a2 = make_view(a, a.shape(), a.strides(), 0, "a2");
-	//a2.shape() = { 1,2,3,4,5 };
-
-
-	std::vector<std::vector<float>> inputs(50000, std::vector<float>(784));
-	std::vector<std::vector<float>> targets(50000, std::vector<float>(10));
+	std::vector<std::vector<float>> inputs(50000, { 784 });
+	std::vector<std::vector<float>> targets(50000, { 10 });
 
 	//GenerateSampleData(inputs, targets);
 
 	//LoadSampleData("train-images.idx3-ubyte", "train-labels.idx1-ubyte", inputs, targets);
 
+	Inferno::LayerNorm layernorm1 = Inferno::LayerNorm(3);
 
-
-	Inferno::Embedding embed = Inferno::Embedding(100, 1024, device);  //vocab_size, embed_dim
-
-	Inferno::Tensor e = embed(tokens);
 	
-	std::cout << e << std::endl;
+	Inferno::Tensor l = layernorm1(normfwd);
 	
-	e.backward();	
+	std::cout << "Printing Layernorm after forward\n\n";
+	std::cout << l << std::endl;
+	
+	l.backward();	
 
-	std::cout << "Printing Embed after backward\n\n";
-	std::cout << embed << std::endl;
+	std::cout << "Printing Layernorm after backward\n\n";
+	std::cout << layernorm1 << std::endl;
 
 	
 	
