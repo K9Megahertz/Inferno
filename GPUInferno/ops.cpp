@@ -745,5 +745,160 @@ namespace Inferno {
 
 	}
 
+	Tensor concat(const std::vector<Tensor>& tensors, int axis) {
+
+		if (tensors.empty()) {
+			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "concat: tensor list is empty.");
+			exit(1);
+		}
+
+		const Tensor& first = tensors[0];
+		const size_t rank = first.shape().size();
+
+		if (rank == 0) {
+			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "concat: scalar tensors not supported.");
+			exit(1);
+		}
+
+		if (axis < 0) {
+			axis += static_cast<int>(rank);
+		}
+
+		if (axis < 0 || axis >= static_cast<int>(rank)) {
+			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "concat: axis out of bounds.");
+			exit(1);
+		}
+
+		DType dtype = first.dtype();
+		Device device = first.device();
+
+		std::vector<size_t> out_shape = first.shape();
+		out_shape[axis] = 0;
+
+		for (size_t i = 0; i < tensors.size(); ++i) {
+			const Tensor& t = tensors[i];
+
+			if (t.dtype() != dtype) {
+				Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "concat: dtype mismatch.");
+				exit(1);
+			}
+
+			if (t.device() != device) {
+				Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "concat: device mismatch.");
+				exit(1);
+			}
+
+			if (t.shape().size() != rank) {
+				Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "concat: rank mismatch.");
+				exit(1);
+			}
+
+			for (size_t d = 0; d < rank; ++d) {
+				if (d == static_cast<size_t>(axis)) continue;
+
+				if (t.shape()[d] != first.shape()[d]) {
+					Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,
+						"concat: shapes must match on all non-concat axes.");
+					exit(1);
+				}
+			}
+
+			out_shape[axis] += t.shape()[axis];
+		}
+
+		Tensor out(dtype, out_shape, "concat", device);
+
+		// prefix starts along concat axis
+		std::vector<size_t> axis_starts(tensors.size(), 0);
+		size_t running = 0;
+		for (size_t i = 0; i < tensors.size(); ++i) {
+			axis_starts[i] = running;
+			running += tensors[i].shape()[axis];
+		}
+
+		// flatten source metadata
+		std::vector<size_t> src_shapes_flat;
+		std::vector<size_t> src_strides_flat;
+		std::vector<size_t> src_offsets;
+		src_shapes_flat.reserve(tensors.size() * rank);
+		src_strides_flat.reserve(tensors.size() * rank);
+		src_offsets.reserve(tensors.size());
+
+		for (const auto& t : tensors) {
+			for (size_t d = 0; d < rank; ++d) {
+				src_shapes_flat.push_back(t.shape()[d]);
+				src_strides_flat.push_back(t.strides()[d]);
+			}
+			src_offsets.push_back(t.offset());
+		}
+
+		bool req_grad = false;
+		for (const auto& t : tensors) {
+			if (t.requires_grad()) {
+				req_grad = true;
+				break;
+			}
+		}
+		//GetImpl(out)->set_requires_grad(req_grad);
+
+		dispatchOne(dtype, [&](auto TagA) {
+			using AT = typename decltype(TagA)::type;
+
+			std::vector<const AT*> src_ptrs;
+			src_ptrs.reserve(tensors.size());
+			for (const auto& t : tensors) {
+				src_ptrs.push_back(GetImpl(t)->data_as_ptr<AT>());
+			}
+
+			AT* optr = GetImpl(out)->data_as_ptr<AT>();
+
+			switch (device.m_type) {
+
+			case DeviceType::CPU:
+				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CPU Code path");
+				cpu_concat<AT>(
+					src_ptrs,
+					optr,
+					src_shapes_flat,
+					src_strides_flat,
+					src_offsets,
+					axis_starts,
+					out.shape(),
+					out.strides(),
+					out.offset(),
+					out.numel(),
+					static_cast<size_t>(axis),
+					rank
+				);
+				break;
+
+			case DeviceType::CUDA:
+				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CUDA Code path");
+				cuda_concat<AT>(
+					src_ptrs,
+					optr,
+					src_shapes_flat,
+					src_strides_flat,
+					src_offsets,
+					axis_starts,
+					out.shape(),
+					out.strides(),
+					out.offset(),
+					out.numel(),
+					static_cast<size_t>(axis),
+					rank
+				);
+				break;
+
+			default:
+				Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "Invalid device type");
+				exit(1);
+			}
+			});
+
+		return out;
+	}
+
+
 }
 

@@ -276,5 +276,6 @@
     <CudaCompile Include="cuda\cudascatteraddembedding.cu" />
     <CudaCompile Include="cuda\cudalayernorm.cu" />
     <CudaCompile Include="cuda\cudascatteraddslice.cu" />
+    <CudaCompile Include="cuda\cudaconcat.cu" />
   </ItemGroup>
 </Project>

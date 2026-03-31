@@ -819,7 +819,7 @@ namespace Inferno {
 		return m_impl->is_contiguous();
 	}
 
-
+	
 	
 
 }

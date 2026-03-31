@@ -15,6 +15,7 @@ namespace Inferno {
 	Tensor matmul_impl(const Tensor& A, const Tensor& B);
 	Tensor transpose_impl(const Tensor& A, int dima, int dimb);
 	Tensor reshape_impl(Tensor& A, const std::vector<size_t>& newshape);
+	Tensor concat(const std::vector<Tensor>& tensors, int axis = 0);
 	Tensor make_view(const Tensor& base, const std::vector<size_t>& new_shape, const std::vector<size_t>& new_strides, size_t new_storage_offset, const std::string& name);
 
 
@@ -465,6 +466,61 @@ namespace Inferno {
 		}
 
 		out[0] = sum / static_cast<RT>(numel);
+	}
+
+	template <typename T>
+	void cpu_concat(
+		const std::vector<const T*>& src_ptrs,
+		T* optr,
+		const std::vector<size_t>& src_shapes_flat,
+		const std::vector<size_t>& src_strides_flat,
+		const std::vector<size_t>& src_offsets,
+		const std::vector<size_t>& axis_starts,
+		const std::vector<size_t>& out_shape,
+		const std::vector<size_t>& out_strides,
+		size_t out_offset,
+		size_t out_numel,
+		size_t axis,
+		size_t rank)
+	{
+		std::vector<size_t> out_idx(rank, 0);
+		std::vector<size_t> src_idx(rank, 0);
+
+		for (size_t linear = 0; linear < out_numel; ++linear) {
+
+			size_t tmp = linear;
+			for (int d = static_cast<int>(rank) - 1; d >= 0; --d) {
+				out_idx[d] = tmp % out_shape[d];
+				tmp /= out_shape[d];
+			}
+
+			size_t out_axis_idx = out_idx[axis];
+
+			size_t tensor_idx = 0;
+			for (size_t i = 0; i < axis_starts.size(); ++i) {
+				size_t start = axis_starts[i];
+				size_t end = start + src_shapes_flat[i * rank + axis];
+				if (out_axis_idx >= start && out_axis_idx < end) {
+					tensor_idx = i;
+					break;
+				}
+			}
+
+			src_idx = out_idx;
+			src_idx[axis] -= axis_starts[tensor_idx];
+
+			size_t dst_storage_idx = out_offset;
+			for (size_t d = 0; d < rank; ++d) {
+				dst_storage_idx += out_idx[d] * out_strides[d];
+			}
+
+			size_t src_storage_idx = src_offsets[tensor_idx];
+			for (size_t d = 0; d < rank; ++d) {
+				src_storage_idx += src_idx[d] * src_strides_flat[tensor_idx * rank + d];
+			}
+
+			optr[dst_storage_idx] = src_ptrs[tensor_idx][src_storage_idx];
+		}
 	}
 
 

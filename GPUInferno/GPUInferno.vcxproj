@@ -240,6 +240,7 @@
     <ClInclude Include="tensor.h" />
     <ClInclude Include="tensorimpl.h" />
     <ClInclude Include="Util\timer.h" />
+    <CudaCompile Include="cuda\cudaconcat.cu" />
     <CudaCompile Include="cuda\cudadivide.cu" />
     <CudaCompile Include="cuda\cudaembedding.cu" />
     <CudaCompile Include="cuda\cudalayernorm.cu" />

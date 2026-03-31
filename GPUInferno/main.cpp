@@ -1,8 +1,8 @@
 #include "inferno.h"
 #include "tests/tests.h"
 
-//Inferno::Device device = Inferno::Device::cpu();
-Inferno::Device device = Inferno::Device::cuda(0);
+Inferno::Device device = Inferno::Device::cpu();
+//Inferno::Device device = Inferno::Device::cuda(0);
 
 
 
@@ -452,17 +452,29 @@ int main() {
 		
 	Inferno::Tensor input = Inferno::Tensor::randn(Inferno::DType::Float32, { 784 }, "input", device);	
 	Inferno::Tensor target(Inferno::DType::Float32, {1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, { 10 }, "target", device);
-
 	Inferno::Tensor tokens(Inferno::DType::Int32, {42, 13, 1, 0, 99, 34, 23, 78, 1, 25 }, { 10 }, "tokens", device);
-	
-
 	Inferno::Tensor normfwd(Inferno::DType::Float32, std::vector<float> {0.2, 0.1, 0.3, 0.5, 0.1, 0.1}, { 2,3 }, "normfwd", device);
 
-	std::cout << normfwd << std::endl;
-	Inferno::Tensor newshape = normfwd.reshape({3, 2});
 
-	std::cout << newshape << std::endl;
 
+	Inferno::Tensor tensor1(Inferno::DType::Float32, { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, { 2,3,4 }, "tensor1", device);
+	Inferno::Tensor tensor2(Inferno::DType::Float32, { 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1 }, { 2,3,4 }, "tensor2", device);
+
+	std::vector<Inferno::Tensor> list = { tensor1, tensor2 };
+
+	std::cout << tensor1 << std::endl;
+	std::cout << tensor2 << std::endl;
+
+	Inferno::Tensor concat = Inferno::concat(list, 2);
+
+	std::cout << concat << std::endl;
+
+	//Inferno::Embedding e = Inferno::Embedding(10, 10, device);
+
+	//Inferno::Tensor blah = e(tokens);
+
+
+	
 	
 
 	std::vector<std::vector<float>> inputs(50000, { 784 });
@@ -472,7 +484,7 @@ int main() {
 
 	//LoadSampleData("train-images.idx3-ubyte", "train-labels.idx1-ubyte", inputs, targets);
 
-	Inferno::LayerNorm layernorm1 = Inferno::LayerNorm(3);
+	/*Inferno::LayerNorm layernorm1 = Inferno::LayerNorm(3);
 
 	
 	Inferno::Tensor l = layernorm1(normfwd);
@@ -485,7 +497,7 @@ int main() {
 	std::cout << "Printing Layernorm after backward\n\n";
 	std::cout << layernorm1 << std::endl;
 
-	
+	*/
 	
 	std::vector<int> layers({ 784,576,256,10 });
 	//std::vector<int> layers({ 100,80,40,10});

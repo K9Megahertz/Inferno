@@ -130,9 +130,6 @@ namespace Inferno {
 				});
 			});
 	}*/
-
-
-	
 	
 
 
@@ -150,6 +147,8 @@ namespace Inferno {
 		friend Tensor reshape_impl(const Tensor& A, const std::vector<size_t>& newshape);
 
 		friend Tensor negate(const Tensor& A);
+
+		friend Tensor concat(const std::vector<Inferno::Tensor>& tensors, int axis);
 
 		friend std::ostream& operator<<(std::ostream& os, const Tensor& t);
 		
@@ -257,6 +256,7 @@ namespace Inferno {
 		Tensor slice(int axis, const size_t start, const size_t end, const size_t step = 1);
 		Tensor reshape(const std::vector<size_t>& newshape) const;
 		void backward();
+		
 
 
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

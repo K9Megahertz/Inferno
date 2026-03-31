@@ -64,6 +64,22 @@ namespace Inferno {
 	template <typename AT>
 	void cuda_layer_normalization(const AT* iptr, AT* optr, float* gptr, float* bptr, size_t num_batches, size_t dim);
 
+
+	template <typename T>
+	void cuda_concat(
+		const std::vector<const T*>& src_ptrs_host,
+		T* optr,
+		const std::vector<size_t>& src_shapes_flat_host,
+		const std::vector<size_t>& src_strides_flat_host,
+		const std::vector<size_t>& src_offsets_host,
+		const std::vector<size_t>& axis_starts_host,
+		const std::vector<size_t>& out_shape_host,
+		const std::vector<size_t>& out_strides_host,
+		size_t out_offset,
+		size_t out_numel,
+		size_t axis,
+		size_t rank);
+
 	inline void check_cuda(cudaError_t err, const char* msg) {
 		if (err != cudaSuccess) {			
 			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, std::string(msg) + ": " + cudaGetErrorString(err));
