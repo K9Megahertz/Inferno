@@ -3,6 +3,17 @@
 namespace Inferno {
 
 
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    //  Function name
+    //
+    //
+    //
+    //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     template<typename T>
     __global__ void reduce_sum_kernel(const T* input, T* output, size_t n)
     {
@@ -38,6 +49,18 @@ namespace Inferno {
         }
     }
 
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    //  Function name
+    //
+    //
+    //
+    //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     template<typename AT, typename BT, typename RT>
     __global__ void mse_loss_elementwise_kernel(const AT* a, const BT* b, RT* temp, size_t numel) {
         size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -48,6 +71,17 @@ namespace Inferno {
         }
     }
 
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    //  Function name
+    //
+    //
+    //
+    //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename AT, typename BT, typename RT>
     void cuda_mse_loss(const AT* a, const BT* b, RT* out, size_t numel) {
@@ -92,43 +126,41 @@ namespace Inferno {
     }
 
 
-    // explicit instantiations
-    template void cuda_mse_loss<int, int, int>(
-        const int*, const int*, int*,        
-        size_t);
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    //  Function name
+    //
+    //
+    //
+    //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template void cuda_mse_loss<float, float, float>(
-        const float*, const float*, float*,        
-        size_t);
+    template void cuda_mse_loss<int, int, int>(const int*, const int*, int*,size_t);
+    template void cuda_mse_loss<int, float, float>(const int*, const float*, float*, size_t);
+    template void cuda_mse_loss<int, double, double>(const int*, const double*, double*, size_t);
 
-    template void cuda_mse_loss<double, double, double>(
-        const double*, const double*, double*,
-        size_t);
+    template void cuda_mse_loss<float, int, float>(const float*, const int*, float*, size_t);
+    template void cuda_mse_loss<float, float, float>(const float*, const float*, float*, size_t);    
+    template void cuda_mse_loss<float, double, double>(const float*, const double*, double*, size_t);
 
-    template void cuda_mse_loss<int, float, float>(
-        const int*, const float*, float*,
-        size_t);
-
-    template void cuda_mse_loss<float, int, float>(
-        const float*, const int*, float*,
-        size_t);
-
-    template void cuda_mse_loss<int, double, double>(
-        const int*, const double*, double*,
-        size_t);
-
-    template void cuda_mse_loss<double, int, double>(
-        const double*, const int*, double*,
-        size_t);
-
-    template void cuda_mse_loss<float, double, double>(
-        const float*, const double*, double*,
-        size_t);
-
-    template void cuda_mse_loss<double, float, double>(
-        const double*, const float*, double*,
-        size_t);
-
+    template void cuda_mse_loss<double, int, double>(const double*, const int*, double*, size_t);
+    template void cuda_mse_loss<double, float, double>(const double*, const float*, double*, size_t);
+    template void cuda_mse_loss<double, double, double>(const double*, const double*, double*, size_t);
+    
+    
+    
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    //  Function name
+    //
+    //
+    //
+    //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename AT, typename BT, typename RT>
     __global__ void mse_loss_backward_kernel(
@@ -155,6 +187,18 @@ namespace Inferno {
         }
     }
 
+
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    //  Function name
+    //
+    //
+    //
+    //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename AT, typename BT, typename RT>
     void cuda_mse_loss_backward(
@@ -191,31 +235,28 @@ namespace Inferno {
         }
     }
 
-    template void cuda_mse_loss_backward<int, int, int>(
-        const int*, const int*, int*, int*, const int*, size_t);
 
-    template void cuda_mse_loss_backward<float, float, float>(
-        const float*, const float*, float*, float*, const float*, size_t);
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    //  Function name
+    //
+    //
+    //
+    //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template void cuda_mse_loss_backward<double, double, double>(
-        const double*, const double*, double*, double*, const double*, size_t);
+    template void cuda_mse_loss_backward<int, int, int>(const int*, const int*, int*, int*, const int*, size_t);
+    template void cuda_mse_loss_backward<float, float, float>(const float*, const float*, float*, float*, const float*, size_t);
+    template void cuda_mse_loss_backward<double, double, double>(const double*, const double*, double*, double*, const double*, size_t);
 
-    template void cuda_mse_loss_backward<int, float, float>(
-        const int*, const float*, float*, float*, const float*, size_t);
+    template void cuda_mse_loss_backward<int, float, float>(const int*, const float*, float*, float*, const float*, size_t);
+    template void cuda_mse_loss_backward<float, int, float>(const float*, const int*, float*, float*, const float*, size_t);
+    template void cuda_mse_loss_backward<int, double, double>(const int*, const double*, double*, double*, const double*, size_t);
 
-    template void cuda_mse_loss_backward<float, int, float>(
-        const float*, const int*, float*, float*, const float*, size_t);
-
-    template void cuda_mse_loss_backward<int, double, double>(
-        const int*, const double*, double*, double*, const double*, size_t);
-
-    template void cuda_mse_loss_backward<double, int, double>(
-        const double*, const int*, double*, double*, const double*, size_t);
-
-    template void cuda_mse_loss_backward<float, double, double>(
-        const float*, const double*, double*, double*, const double*, size_t);
-
-    template void cuda_mse_loss_backward<double, float, double>(
-        const double*, const float*, double*, double*, const double*, size_t);
+    template void cuda_mse_loss_backward<double, int, double>(const double*, const int*, double*, double*, const double*, size_t);
+    template void cuda_mse_loss_backward<float, double, double>(const float*, const double*, double*, double*, const double*, size_t);
+    template void cuda_mse_loss_backward<double, float, double>(const double*, const float*, double*, double*, const double*, size_t);
 
 }

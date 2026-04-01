@@ -598,7 +598,7 @@ namespace Inferno {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//
-	//  Function GetImpl
+	//  Function GetImpl/SetImpl
 	//
 	//
 	//
@@ -728,6 +728,18 @@ namespace Inferno {
 	}
 
 
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	//  Function name
+	//
+	//
+	//
+	//
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 	Tensor reshape_impl(const Tensor& A, const std::vector<size_t>& newshape) {
 
 		std::vector<size_t> newstrides = Tensor::calculate_strides(newshape);
@@ -745,54 +757,89 @@ namespace Inferno {
 
 	}
 
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	//  Function name
+	//
+	//
+	//
+	//
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	Tensor concat(const std::vector<Tensor>& tensors, int axis) {
 
+
+		//if there are no tensors in the list, error out
 		if (tensors.empty()) {
 			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "concat: tensor list is empty.");
 			exit(1);
 		}
 
+
+		//get the first tensor in the list
 		const Tensor& first = tensors[0];
+
+		//get the number of dimensions in the first tensor
 		const size_t rank = first.shape().size();
 
+		//if there are no dimensions, error out
 		if (rank == 0) {
 			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "concat: scalar tensors not supported.");
 			exit(1);
 		}
 
+
+		//convert negative axis specification to positive
 		if (axis < 0) {
 			axis += static_cast<int>(rank);
 		}
 
+
+		//verify the axis specified is within the range of the tensor
 		if (axis < 0 || axis >= static_cast<int>(rank)) {
 			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "concat: axis out of bounds.");
 			exit(1);
 		}
 
+
+		//get the type and device
 		DType dtype = first.dtype();
 		Device device = first.device();
 
-		std::vector<size_t> out_shape = first.shape();
-		out_shape[axis] = 0;
 
+		//the shape of the final tensor will be the same as the first one except along the dimension we want to concatenate on
+		std::vector<size_t> out_shape = first.shape();		
+		out_shape[axis] = 0;   //not required, but just set it to 0 for S&G's
+
+
+
+		//we are going to loop over every source tensor
 		for (size_t i = 0; i < tensors.size(); ++i) {
-			const Tensor& t = tensors[i];
+			const Tensor& t = tensors[i];  //alias
 
+
+			//current tensor data type does not match the first one
 			if (t.dtype() != dtype) {
 				Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "concat: dtype mismatch.");
 				exit(1);
 			}
 
+			//current tensor device does not match the first one
 			if (t.device() != device) {
 				Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "concat: device mismatch.");
 				exit(1);
 			}
 
-			if (t.shape().size() != rank) {
+			//current tensor rank does not match the first one
+			if (t.ndim() != rank) {
 				Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "concat: rank mismatch.");
 				exit(1);
 			}
 
+			//make sure all the dimensions match except for the concat axis (the can be different sizes)
 			for (size_t d = 0; d < rank; ++d) {
 				if (d == static_cast<size_t>(axis)) continue;
 
@@ -803,14 +850,25 @@ namespace Inferno {
 				}
 			}
 
+			//accumulate the concat axis of the tensor to the total
+			//e.g.  concat on axis 2
+			//      Tensor 1 size = 3
+			//      Tensor 2 size = 5
+			//      Tensor 3 size = 2
+			//      Total size     10
 			out_shape[axis] += t.shape()[axis];
 		}
 
+
+		//create the base for the output Tensor
 		Tensor out(dtype, out_shape, "concat", device);
 
 		// prefix starts along concat axis
 		std::vector<size_t> axis_starts(tensors.size(), 0);
 		size_t running = 0;
+
+		//loop over all the tensors and figure out how far down the axis in the output each one of them would start
+		//e.g. start0--->3----->8-->10end
 		for (size_t i = 0; i < tensors.size(); ++i) {
 			axis_starts[i] = running;
 			running += tensors[i].shape()[axis];

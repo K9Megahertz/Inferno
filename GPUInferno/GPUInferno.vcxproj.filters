@@ -21,16 +21,10 @@
     <ClCompile Include="tensor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="storage\storage.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="storage\cudastorage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="storage\cpustorage.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GradFN\node.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Util\logger.cpp">

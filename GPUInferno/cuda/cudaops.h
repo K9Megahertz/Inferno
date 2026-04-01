@@ -8,7 +8,7 @@
 
 namespace Inferno {
 
-	
+	constexpr int MAX_DIMS = 12;
 	
 	template<typename AT, typename BT, typename RT>	
 	void cuda_add(const AT* aptr, const BT* bptr, RT* outptr, const std::vector<size_t>& ashape, const std::vector<size_t>& astrides, size_t aoffset, const std::vector<size_t>& bshape, const std::vector<size_t>& bstrides, size_t boffset, const std::vector<size_t>& out_shape, size_t out_numel);

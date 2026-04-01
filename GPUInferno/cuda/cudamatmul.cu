@@ -5,8 +5,18 @@
 #include "cudaops.h"
 
 namespace Inferno {
+    
 
-    constexpr int CUDA_MATMUL_MAX_DIMS = 16;
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    //  Function name
+    //
+    //
+    //
+    //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename AT, typename BT, typename RT>
     __global__ void matmul_kernel_broadcast(
@@ -49,7 +59,7 @@ namespace Inferno {
 
         size_t batch_linear = tmp;
 
-        size_t batch_idx[CUDA_MATMUL_MAX_DIMS];
+        size_t batch_idx[MAX_DIMS];
 
 
         //figure out the batch_idx using whats left over from tmp from above
@@ -92,6 +102,18 @@ namespace Inferno {
         outptr[linear] = sum;
     }
 
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    //  Function name
+    //
+    //
+    //
+    //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     template<typename AT, typename BT, typename RT>
     void cuda_matmul(
         const AT* aptr,
@@ -124,9 +146,9 @@ namespace Inferno {
 
         const size_t batch_rank = out_batch_shape.size();
 
-        if (batch_rank > CUDA_MATMUL_MAX_DIMS) {
+        if (batch_rank > MAX_DIMS) {
             Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,
-                "cuda_matmul: batch rank exceeds CUDA_MATMUL_MAX_DIMS");
+                "cuda_matmul: batch rank exceeds MAX_DIMS");
             exit(1);
         }
            
@@ -148,40 +170,11 @@ namespace Inferno {
             check_cuda(cudaMalloc(&d_a_strides, a_rank * sizeof(size_t)), "cuda_matmul cudaMalloc d_a_batch_strides failed");
             check_cuda(cudaMalloc(&d_b_strides, b_rank * sizeof(size_t)), "cuda_matmul cudaMalloc d_b_batch_strides failed");
 
-            check_cuda(cudaMemcpy(
-                d_out_batch_shape,
-                out_batch_shape.data(),
-                batch_rank * sizeof(size_t),
-                cudaMemcpyHostToDevice),
-                "cuda_matmul cudaMemcpy d_out_batch_shape failed");
-
-            check_cuda(cudaMemcpy(
-                d_a_batch_shape,
-                a_batch_shape.data(),
-                batch_rank * sizeof(size_t),
-                cudaMemcpyHostToDevice),
-                "cuda_matmul cudaMemcpy d_a_batch_padded failed");
-
-            check_cuda(cudaMemcpy(
-                d_b_batch_shape,
-                b_batch_shape.data(),
-                batch_rank * sizeof(size_t),
-                cudaMemcpyHostToDevice),
-                "cuda_matmul cudaMemcpy d_b_batch_padded failed");
-
-            check_cuda(cudaMemcpy(
-                d_a_strides,
-                a_strides.data(),
-                a_rank * sizeof(size_t),
-                cudaMemcpyHostToDevice),
-                "cuda_matmul cudaMemcpy d_a_batch_strides failed");
-
-            check_cuda(cudaMemcpy(
-                d_b_strides,
-                b_strides.data(),
-                b_rank * sizeof(size_t),
-                cudaMemcpyHostToDevice),
-                "cuda_matmul cudaMemcpy d_b_batch_strides failed");
+            check_cuda(cudaMemcpy(d_out_batch_shape,out_batch_shape.data(),batch_rank * sizeof(size_t),cudaMemcpyHostToDevice),"cuda_matmul cudaMemcpy d_out_batch_shape failed");
+            check_cuda(cudaMemcpy(d_a_batch_shape,a_batch_shape.data(),batch_rank * sizeof(size_t),cudaMemcpyHostToDevice),"cuda_matmul cudaMemcpy d_a_batch_padded failed");
+            check_cuda(cudaMemcpy(d_b_batch_shape,b_batch_shape.data(),batch_rank * sizeof(size_t),cudaMemcpyHostToDevice),"cuda_matmul cudaMemcpy d_b_batch_padded failed");
+            check_cuda(cudaMemcpy(d_a_strides,a_strides.data(),a_rank * sizeof(size_t),cudaMemcpyHostToDevice),"cuda_matmul cudaMemcpy d_a_batch_strides failed");
+            check_cuda(cudaMemcpy(d_b_strides,b_strides.data(),b_rank * sizeof(size_t),cudaMemcpyHostToDevice),"cuda_matmul cudaMemcpy d_b_batch_strides failed");
         //}
 
         const size_t total_out = total_batches * M * N;
@@ -219,7 +212,17 @@ namespace Inferno {
         //}
     }
 
-    // Explicit instantiations
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    //  Function name
+    //
+    //
+    //
+    //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     template void cuda_matmul<int, int, int>(
         const int*,

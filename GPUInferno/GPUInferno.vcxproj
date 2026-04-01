@@ -181,13 +181,11 @@
     <ClCompile Include="tests\tests.cpp" />
     <ClCompile Include="Util\idbroker.cpp" />
     <ClCompile Include="Util\logger.cpp" />
-    <ClCompile Include="GradFN\node.cpp" />
     <ClCompile Include="Util\nodetracker.cpp" />
     <ClCompile Include="Util\random.cpp" />
     <ClCompile Include="storage\cpustorage.cpp" />
     <ClCompile Include="storage\cudastorage.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="storage\storage.cpp" />
     <ClCompile Include="tensor.cpp" />
     <ClCompile Include="tensorimpl.cpp" />
     <ClCompile Include="Util\timer.cpp" />
