@@ -115,8 +115,6 @@ public:
 	PositionalEncoding(size_t context_size, size_t embed_dim) {
 
 
-
-
 		//initialize positional vectors
 		std::vector<float> pe_data(context_size * embed_dim);
 
@@ -341,7 +339,7 @@ public:
 		//Softmax
 		//Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "SoftMax");
 		//x = Inferno::softmax(x);
-		std::cout << x << std::endl;
+		//std::cout << x << std::endl;
 
 		std::cout << "next logits slice" << std::endl;
 		Inferno::Tensor next_logits = x.slice(-2, m_context_size - 1, m_context_size - 1);
