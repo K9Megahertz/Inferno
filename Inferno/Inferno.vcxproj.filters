@@ -1,0 +1,440 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\util">
+      <UniqueIdentifier>{8c798134-2a6e-4e90-899d-0709444f1eea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\core">
+      <UniqueIdentifier>{292042ed-25d0-4f42-adcb-c62a62f6a0ba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\cuda">
+      <UniqueIdentifier>{7b4d3002-4491-424c-a465-fd9e861cb4a0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\util">
+      <UniqueIdentifier>{76c15569-a86c-4954-a5b8-8987387942c8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\cuda">
+      <UniqueIdentifier>{8b7d575f-bbd0-41e3-b46a-4057de1787ba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\core">
+      <UniqueIdentifier>{e7aabbbb-6494-4bc0-bb43-69f478aac5fe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\storage">
+      <UniqueIdentifier>{35f8880a-adf4-46f5-8463-66883b3b1897}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\storage">
+      <UniqueIdentifier>{1eeef141-be6c-4136-9d5c-9bb57efb2dac}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\optim">
+      <UniqueIdentifier>{b511b401-7c9d-469a-874d-6774ab1f2da1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\modules">
+      <UniqueIdentifier>{94941330-018d-4078-bc7b-82ce758af98c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\modules">
+      <UniqueIdentifier>{159014a1-554d-4e26-9637-b6962f7893b8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\gradfn">
+      <UniqueIdentifier>{cee4115b-3c85-4fd6-85b2-d9accfdf722d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\gradfn">
+      <UniqueIdentifier>{59a774db-2b85-485f-9802-80e20ae05f52}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\engine">
+      <UniqueIdentifier>{85c70a4f-a9de-4ceb-aa0c-eb455b5d01e0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\engine">
+      <UniqueIdentifier>{09e8a289-c97a-48c6-91dc-991ef2d90639}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\optim">
+      <UniqueIdentifier>{d124163c-2bd0-4de6-ba13-5acd932c2eae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\functional">
+      <UniqueIdentifier>{0286d4d9-522b-4115-a318-0e6649b933bd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\functional">
+      <UniqueIdentifier>{fef29439-b810-4fc6-b7b6-706e54310f35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\loss">
+      <UniqueIdentifier>{392af0d6-c0ea-4cdb-aab8-5d95bcc4aa9f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\loss">
+      <UniqueIdentifier>{1496c7a3-5b28-449e-ac43-e8be3ddf6929}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\core\tensor.cpp">
+      <Filter>Source Files\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\util\logger.cpp">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\util\idbroker.cpp">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\util\nodetracker.cpp">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\util\random.cpp">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\storage\cpustorage.cpp">
+      <Filter>Source Files\storage</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\storage\cudastorage.cpp">
+      <Filter>Source Files\storage</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\modules\embedding.cpp">
+      <Filter>Source Files\modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\modules\layernorm.cpp">
+      <Filter>Source Files\modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\modules\linear.cpp">
+      <Filter>Source Files\modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\modules\module.cpp">
+      <Filter>Source Files\modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\accumulategrad.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\addbackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\concatbackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\dividebackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\embeddingbackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\gelubackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\layernormbackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\mmbackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\mselossbackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\multiplybackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\negatebackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\reshapebackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\selectbackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\sigmoidbackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\slicebackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\softmaxbackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\subtractbackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\transposebackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradengine\engine.cpp">
+      <Filter>Source Files\engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\core\ops.cpp">
+      <Filter>Source Files\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\core\tensorimpl.cpp">
+      <Filter>Source Files\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\optim\optimizers.cpp">
+      <Filter>Source Files\optim</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\core\broadcastops.cpp">
+      <Filter>Source Files\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\functional\gelu.cpp">
+      <Filter>Source Files\functional</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\functional\sigmoid.cpp">
+      <Filter>Source Files\functional</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\functional\softmax.cpp">
+      <Filter>Source Files\functional</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\contiguousbackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\loss\loss.cpp">
+      <Filter>Source Files\loss</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\loss\crossentropyloss.cpp">
+      <Filter>Source Files\loss</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gradfn\crossentropylossbackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\inferno\inferno.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\util\logger.h">
+      <Filter>Header Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\util\nodetracker.h">
+      <Filter>Header Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\util\idbroker.h">
+      <Filter>Header Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\inferno\core\tensor.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cuda\cudaops.h">
+      <Filter>Header Files\cuda</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\storage\cpustorage.h">
+      <Filter>Header Files\storage</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\storage\cudastorage.h">
+      <Filter>Header Files\storage</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\storage\storage.h">
+      <Filter>Header Files\storage</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\accumulategrad.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\addbackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\concatbackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\dividebackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\embeddingbackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\gelubackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\layernormbackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\mmbackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\mselossbackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\multiplybackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\negatebackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\node.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\reshapebackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\selectbackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\sigmoidbackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\slicebackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\softmaxbackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\subtractbackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\transposebackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradengine\engine.h">
+      <Filter>Header Files\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\inferno\modules\embedding.h">
+      <Filter>Header Files\modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\inferno\modules\layernorm.h">
+      <Filter>Header Files\modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\inferno\modules\linear.h">
+      <Filter>Header Files\modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\inferno\core\ops.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\inferno\optim\optimizers.h">
+      <Filter>Header Files\optim</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\inferno\util\random.h">
+      <Filter>Header Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\core\tensorimpl.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\core\cpuops.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\inferno\modules\module.h">
+      <Filter>Header Files\modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\core\broadcastops.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\inferno\functional\gelu.h">
+      <Filter>Header Files\functional</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\inferno\functional\sigmoid.h">
+      <Filter>Header Files\functional</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\inferno\functional\softmax.h">
+      <Filter>Header Files\functional</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\contiguousbackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\inferno\loss\loss.h">
+      <Filter>Header Files\loss</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\functional\gelu_kernels.h">
+      <Filter>Header Files\functional</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\functional\sigmoid_kernels.h">
+      <Filter>Header Files\functional</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\functional\softmax_kernels.h">
+      <Filter>Header Files\functional</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\modules\embedding_kernels.h">
+      <Filter>Header Files\modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\modules\layernorm_kernels.h">
+      <Filter>Header Files\modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\core\ops_impl.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\core\dtype_dispatch.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\inferno\core\dtype_traits.h">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\inferno\loss\crossentropyloss.h">
+      <Filter>Header Files\loss</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gradfn\crossentropylossbackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="..\src\cuda\cudaadd.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudaconcat.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudacontiguous.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudadivide.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudaembedding.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudafilltensor.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudagelu.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudalayernorm.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudamath.cuh">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudamatmul.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudamseloss.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudamultiply.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudanegate.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudascatteraddembedding.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudascatteraddslice.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudaselectbackward.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudasgdstep.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudasigmoid.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudasoftmax.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudasubtract.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudasumtoshape.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudatri.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudamaskedfill.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudacrossentropyloss.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+  </ItemGroup>
+</Project>

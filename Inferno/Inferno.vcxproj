@@ -1,0 +1,331 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\core\broadcastops.cpp" />
+    <ClCompile Include="..\src\core\ops.cpp" />
+    <ClCompile Include="..\src\core\tensor.cpp" />
+    <ClCompile Include="..\src\core\tensorimpl.cpp" />
+    <ClCompile Include="..\src\functional\gelu.cpp" />
+    <ClCompile Include="..\src\functional\sigmoid.cpp" />
+    <ClCompile Include="..\src\functional\softmax.cpp" />
+    <ClCompile Include="..\src\gradengine\engine.cpp" />
+    <ClCompile Include="..\src\gradfn\accumulategrad.cpp" />
+    <ClCompile Include="..\src\gradfn\addbackward.cpp" />
+    <ClCompile Include="..\src\gradfn\concatbackward.cpp" />
+    <ClCompile Include="..\src\gradfn\contiguousbackward.cpp" />
+    <ClCompile Include="..\src\gradfn\crossentropylossbackward.cpp" />
+    <ClCompile Include="..\src\gradfn\dividebackward.cpp" />
+    <ClCompile Include="..\src\gradfn\embeddingbackward.cpp" />
+    <ClCompile Include="..\src\gradfn\gelubackward.cpp" />
+    <ClCompile Include="..\src\gradfn\layernormbackward.cpp" />
+    <ClCompile Include="..\src\gradfn\mmbackward.cpp" />
+    <ClCompile Include="..\src\gradfn\mselossbackward.cpp" />
+    <ClCompile Include="..\src\gradfn\multiplybackward.cpp" />
+    <ClCompile Include="..\src\gradfn\negatebackward.cpp" />
+    <ClCompile Include="..\src\gradfn\reshapebackward.cpp" />
+    <ClCompile Include="..\src\gradfn\selectbackward.cpp" />
+    <ClCompile Include="..\src\gradfn\sigmoidbackward.cpp" />
+    <ClCompile Include="..\src\gradfn\slicebackward.cpp" />
+    <ClCompile Include="..\src\gradfn\softmaxbackward.cpp" />
+    <ClCompile Include="..\src\gradfn\subtractbackward.cpp" />
+    <ClCompile Include="..\src\gradfn\transposebackward.cpp" />
+    <ClCompile Include="..\src\loss\crossentropyloss.cpp" />
+    <ClCompile Include="..\src\loss\loss.cpp" />
+    <ClCompile Include="..\src\modules\embedding.cpp" />
+    <ClCompile Include="..\src\modules\layernorm.cpp" />
+    <ClCompile Include="..\src\modules\linear.cpp" />
+    <ClCompile Include="..\src\modules\module.cpp" />
+    <ClCompile Include="..\src\optim\optimizers.cpp" />
+    <ClCompile Include="..\src\storage\cpustorage.cpp" />
+    <ClCompile Include="..\src\storage\cudastorage.cpp" />
+    <ClCompile Include="..\src\util\idbroker.cpp" />
+    <ClCompile Include="..\src\util\logger.cpp" />
+    <ClCompile Include="..\src\util\nodetracker.cpp" />
+    <ClCompile Include="..\src\util\random.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\inferno\core\dtype_traits.h" />
+    <ClInclude Include="..\include\inferno\core\ops.h" />
+    <ClInclude Include="..\include\inferno\core\tensor.h" />
+    <ClInclude Include="..\include\inferno\functional\gelu.h" />
+    <ClInclude Include="..\include\inferno\functional\sigmoid.h" />
+    <ClInclude Include="..\include\inferno\functional\softmax.h" />
+    <ClInclude Include="..\include\inferno\inferno.h" />
+    <ClInclude Include="..\include\inferno\loss\crossentropyloss.h" />
+    <ClInclude Include="..\include\inferno\loss\loss.h" />
+    <ClInclude Include="..\include\inferno\modules\embedding.h" />
+    <ClInclude Include="..\include\inferno\modules\layernorm.h" />
+    <ClInclude Include="..\include\inferno\modules\linear.h" />
+    <ClInclude Include="..\include\inferno\modules\module.h" />
+    <ClInclude Include="..\include\inferno\optim\optimizers.h" />
+    <ClInclude Include="..\include\inferno\util\random.h" />
+    <ClInclude Include="..\src\core\broadcastops.h" />
+    <ClInclude Include="..\src\core\cpuops.h" />
+    <ClInclude Include="..\src\core\dtype_dispatch.h" />
+    <ClInclude Include="..\src\core\ops_impl.h" />
+    <ClInclude Include="..\src\core\tensorimpl.h" />
+    <ClInclude Include="..\src\cuda\cudaops.h" />
+    <ClInclude Include="..\src\functional\gelu_kernels.h" />
+    <ClInclude Include="..\src\functional\sigmoid_kernels.h" />
+    <ClInclude Include="..\src\functional\softmax_kernels.h" />
+    <ClInclude Include="..\src\gradengine\engine.h" />
+    <ClInclude Include="..\src\gradfn\accumulategrad.h" />
+    <ClInclude Include="..\src\gradfn\addbackward.h" />
+    <ClInclude Include="..\src\gradfn\concatbackward.h" />
+    <ClInclude Include="..\src\gradfn\contiguousbackward.h" />
+    <ClInclude Include="..\src\gradfn\crossentropylossbackward.h" />
+    <ClInclude Include="..\src\gradfn\dividebackward.h" />
+    <ClInclude Include="..\src\gradfn\embeddingbackward.h" />
+    <ClInclude Include="..\src\gradfn\gelubackward.h" />
+    <ClInclude Include="..\src\gradfn\layernormbackward.h" />
+    <ClInclude Include="..\src\gradfn\mmbackward.h" />
+    <ClInclude Include="..\src\gradfn\mselossbackward.h" />
+    <ClInclude Include="..\src\gradfn\multiplybackward.h" />
+    <ClInclude Include="..\src\gradfn\negatebackward.h" />
+    <ClInclude Include="..\src\gradfn\node.h" />
+    <ClInclude Include="..\src\gradfn\reshapebackward.h" />
+    <ClInclude Include="..\src\gradfn\selectbackward.h" />
+    <ClInclude Include="..\src\gradfn\sigmoidbackward.h" />
+    <ClInclude Include="..\src\gradfn\slicebackward.h" />
+    <ClInclude Include="..\src\gradfn\softmaxbackward.h" />
+    <ClInclude Include="..\src\gradfn\subtractbackward.h" />
+    <ClInclude Include="..\src\gradfn\transposebackward.h" />
+    <ClInclude Include="..\src\modules\embedding_kernels.h" />
+    <ClInclude Include="..\src\modules\layernorm_kernels.h" />
+    <ClInclude Include="..\src\storage\cpustorage.h" />
+    <ClInclude Include="..\src\storage\cudastorage.h" />
+    <ClInclude Include="..\src\storage\storage.h" />
+    <ClInclude Include="..\src\util\idbroker.h" />
+    <ClInclude Include="..\src\util\logger.h" />
+    <ClInclude Include="..\src\util\nodetracker.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="..\src\cuda\cudaadd.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudaconcat.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudacontiguous.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudacrossentropyloss.cu" />
+    <CudaCompile Include="..\src\cuda\cudadivide.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudaembedding.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudafilltensor.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudagelu.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudalayernorm.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudamaskedfill.cu" />
+    <CudaCompile Include="..\src\cuda\cudamath.cuh" />
+    <CudaCompile Include="..\src\cuda\cudamatmul.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudamseloss.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudamultiply.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudanegate.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudascatteraddembedding.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudascatteraddslice.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudaselectbackward.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudasgdstep.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudasigmoid.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudasoftmax.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudasubtract.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudasumtoshape.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\src\cuda\cudatri.cu" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{b915cd61-0250-4346-8cc8-e5c672dba672}</ProjectGuid>
+    <RootNamespace>Inferno</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.8.props" />
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>$(SolutionDir)lib\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(ProjectName)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(SolutionDir)lib\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(ProjectName)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SolutionDir)lib\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(ProjectName)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SolutionDir)lib\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(ProjectName)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;$(CUDA_PATH)\include;$(SolutionDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ProgramDataBaseFileName>$(OutDir)$(TargetName).pdb</ProgramDataBaseFileName>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <CudaCompile>
+      <CodeGeneration>compute_89,sm_89</CodeGeneration>
+    </CudaCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;$(CUDA_PATH)\include;$(SolutionDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ProgramDataBaseFileName>$(OutDir)$(TargetName).pdb</ProgramDataBaseFileName>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <CudaCompile>
+      <CodeGeneration>compute_89,sm_89</CodeGeneration>
+    </CudaCompile>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.8.targets" />
+  </ImportGroup>
+</Project>
