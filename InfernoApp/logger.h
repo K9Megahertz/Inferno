@@ -1,87 +1,83 @@
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// 
-// 
-// MIT License
-// 
-// Copyright(c) 2023 Gerald Filimonov
-// 
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files(the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and /or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions :
-// 
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-// 
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-// 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 #include <iostream>
+#include <sstream>
 #include <fstream>
-#include <string>
 #include <chrono>
-#include <iomanip>
 
 
+class Streamlogger;
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//  Logger 
-//
-//
-//
-//
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class Logger {
-
+class Logg {
 
 public:
 
-	enum class LogLevel {		
-		LOGLEVEL_ERROR,
-		LOGLEVEL_WARNING,
+	enum class LogLevel {
+
+		LOGLEVEL_DEBUG,
 		LOGLEVEL_INFO,
-		LOGLEVEL_DEBUG
+		LOGLEVEL_WARN,
+		LOGLEVEL_ERROR
+
 	};
 
-	Logger();
-	~Logger();
 
-	static void Append(Logger::LogLevel ll, std::string message);
-	static void AppendStream(Logger::LogLevel ll, const std::string& message);
-	static void Start(std::string filenamee);
-	static void SetLogLevel(Logger::LogLevel ll);
-	static std::string LogLevelAsString(Logger::LogLevel ll);
+	static Streamlogger Append(Logg::LogLevel level);
+	static std::string LogLevelAsString(Logg::LogLevel ll);
+	static void SetLevel(Logg::LogLevel level);
+	static void Write(const std::string& message);
+	static void Start(std::string filename);
 
-	template<typename... Args>
-	void AppendStream(Logger::LogLevel ll, Args&&... args)
-	{
-		std::ostringstream oss;
-		(oss << ... << args);  // fold expression (C++17)
 
-		AppendStream(ll, oss.str());
+
+
+
+private:
+	static Logg::LogLevel s_log_level;
+	static std::ofstream s_file;
+
+	friend class Streamlogger;
+
+
+};
+
+
+class Streamlogger {
+
+public:
+
+	Streamlogger(Logg::LogLevel level, bool flag) : m_level(level), m_enabled(flag) {}
+
+	Streamlogger(const Streamlogger&) = delete;
+	Streamlogger& operator=(const Streamlogger&) = delete;
+
+	Streamlogger(Streamlogger&&) = default;
+	Streamlogger& operator=(Streamlogger&&) = default;
+
+	~Streamlogger();
+
+	template <typename T>
+	Streamlogger& operator<<(const T& value) {
+		if (m_enabled) {  //check here so we dont waste time streaming in stuff were never going to print out.
+			m_stream << value;
+		}
+		return (*this);
 	}
+
+	Streamlogger& operator<<(std::ostream& (*manip)(std::ostream&)) {
+		if (m_enabled) {  //check here so we dont waste time streaming in stuff were never going to print out.
+			manip(m_stream);
+		}
+		return *this;
+	}
+
 
 
 private:
 
-	static std::ofstream file;
-	static Logger::LogLevel m_currentloglevel;
-
-
-
+	std::ostringstream m_stream;
+	Logg::LogLevel m_level;
+	bool m_enabled;
 
 };
+
+

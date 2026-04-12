@@ -16,8 +16,8 @@ public:
 
 	PositionalEncoding(size_t context_size, size_t embed_dim) {
 
-		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "\n");
-		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "Positional Encoding - Initializing buffers");
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Positional Encoding - Initializing buffers" << std::endl;;
 		//initialize positional vectors
 		std::vector<float> pe_data(context_size * embed_dim);
 
@@ -36,18 +36,18 @@ public:
 			}
 		}
 
-		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "Positional Encoding - Creating tensor");
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Positional Encoding - Creating tensor" << std::endl;
 		pe = Inferno::Tensor(Inferno::DType::Float32, std::move(pe_data), { context_size, embed_dim }, "positional-encoding");
 
-		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "Positional Encoding - Register Buffer");
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Positional Encoding - Register Buffer" << std::endl;
 		register_buffer(pe);
 
 	}
 
 
 	Inferno::Tensor forward(Inferno::Tensor& x) {
-		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "\n");
-		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "Positional Encoding forward");
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Positional Encoding forward" << std::endl;
 		return x + pe;
 	}
 
@@ -89,55 +89,54 @@ public:
 			register_module(&Wk_layers.back());
 			register_module(&Wv_layers.back());
 		}
-
-		// final output projection after concatenation		
-		register_module(&W_out);
+		
+		register_module(&W_out); // final output projection after concatenation		
 
 	}
 
 	Inferno::Tensor forward(Inferno::Tensor& x) override {
 
-		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "Multihead Attention forward");
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Multihead Attention forward" << std::endl;
 		std::vector<Inferno::Tensor> heads;
 
 
 		for (int i = 0; i < m_num_heads; ++i) {
-			Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "Head: " + std::to_string(i));
+			Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Head: " << i << std::endl;
 
-			Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "\n");
-			Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "MHA - Q forward");
+			Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+			Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "MHA - Q forward" << std::endl;
 			auto q = Wq_layers[i].forward(x);
 
-			Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "\n");
-			Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "MHA - K forward");
+			Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+			Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "MHA - K forward" << std::endl;
 			auto k = Wk_layers[i].forward(x);
 
-			Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "\n");
-			Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "MHA - V forward");
+			Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+			Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "MHA - V forward" << std::endl;
 			auto v = Wv_layers[i].forward(x);
 
-			Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "\n");
-			Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "MHA - Attn scores forward - transpose -> matmul -> Divide");
+			Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+			Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "MHA - Attn scores forward - transpose -> matmul -> Divide" << std::endl;
 			auto attn_scores = Inferno::matmul(q, k.transpose(-1, -2)) / std::sqrt(static_cast<float>(m_head_dim));
 
-			Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "\n");
-			Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "MHA - softmax forward");
+			Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+			Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "MHA - softmax forward" << std::endl;
 			auto attn_probs = Inferno::Softmax(attn_scores, -1);
 
-			Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "\n");
-			Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "MHA - matmul forward - Attn x V");
+			Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+			Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "MHA - matmul forward - Attn x V" << std::endl;
 			auto head = Inferno::matmul(attn_probs, v);
 
 			heads.push_back(head);
 		}
 
 		// concatenate heads along embedding dim
-		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "\n");
-		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "MHA - concat forward");
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "MHA - concat forward" << std::endl;
 		Inferno::Tensor concat = Inferno::concat(heads, -1);
 
-		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "\n");
-		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "MHA - Linear forward");
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "MHA - Linear forward" << std::endl;
 		return W_out.forward(concat);
 	}
 
@@ -176,24 +175,20 @@ public:
 		Wqkv_layer(embed_dim, embed_dim * 3)
 	{
 
-
-		register_module(&Wqkv_layer);
-
-
-		// final output projection after concatenation		
-		register_module(&W_out);
+		register_module(&Wqkv_layer);		
+		register_module(&W_out); // final output projection after concatenation		
 
 	}
 
 	Inferno::Tensor forward(Inferno::Tensor& x) override {
 
-		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "Multihead Attention forward");
-
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Multihead Attention forward" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 		auto shape = x.shape();
 
 		if (shape.size() != 3) {
-			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "MultiHeadAttentionFast expects [B, T, C]");
+			Logg::Append(Logg::LogLevel::LOGLEVEL_ERROR) << "MultiHeadAttentionFast expects [B, T, C]" << std::endl;
 			exit(1);
 		}
 
@@ -201,69 +196,170 @@ public:
 		size_t T = shape[1];
 		size_t C = shape[2];
 
-
-		//std::cout << Wqkv_layer << std::endl;
-
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Wqkv_layer weights and bias" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << Wqkv_layer << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 		auto qkv = Wqkv_layer.forward(x);
 
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Wqkv_layer after linear" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << qkv << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 		Inferno::Tensor q = qkv.slice(2, 0, m_embed_dim - 1);                  // [B, T, C]
 		Inferno::Tensor k = qkv.slice(2, m_embed_dim, 2 * m_embed_dim - 1);    // [B, T, C]
 		Inferno::Tensor v = qkv.slice(2, 2 * m_embed_dim, 3 * m_embed_dim - 1);// [B, T, C]
 
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Q after slice" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << q << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "K after slice" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << k << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "V after slice" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << v << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
 		q = q.contiguous();
 		k = k.contiguous();
 		v = v.contiguous();
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Q after contiguous" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << q << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "K after contiguous" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << k << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "V after contiguous" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << v << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 		q = q.reshape({ B, T, m_num_heads, m_head_dim });           // [B, T, H, D]
 		k = k.reshape({ B, T, m_num_heads, m_head_dim });
 		v = v.reshape({ B, T, m_num_heads, m_head_dim });
 
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Q after reshape" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << q << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "K after reshape" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << k << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "V after reshape" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << v << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
 		q = q.transpose(1, 2);                                    // [B, H, T, D]
 		k = k.transpose(1, 2);                                    // [B, H, T, D]
 		v = v.transpose(1, 2);                                    // [B, H, T, D]
 
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Q after transpose" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << q << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "K after transpose" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << k << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "V after transpose" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << v << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Transposing K for matmul with Q" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << k << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 		Inferno::Tensor kt = k.transpose(-1, -2);                          // [B, H, D, T]
 
-		Inferno::Tensor scores = matmul(q, kt);                             // [B, H, T, T]
-		//std::cout << scores << std::endl;
-		float scale = 1.0f / std::sqrt((float)m_head_dim);
-		scores = scores * scale;
-		//std::cout << scores << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "K after transpose" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << k << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
+		Inferno::Tensor scores = matmul(q, kt);                             // [B, H, T, T]
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "attn scores after matmul(q, kt)" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << scores << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
+		float scale = 1.0f / std::sqrt((float)m_head_dim);
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "calculating scaled attn scores using scale: " << scale << std::endl;		
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+		
+		scores = scores * scale;
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "scores after scaling" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << scores << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Creating mask for attention" << std::endl;
 
 		Inferno::Tensor ones(Inferno::DType::Int32, std::vector<int>(T * T, 1.0f), { 1, 1, T, T }, "causal_mask_ones", scores.device());
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Created Tensor with all 1's to serve as base for mask" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << ones << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
 		Inferno::Tensor mask = Inferno::triu(ones, 1);
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Created triu mask" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << mask << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 		// mask out disallowed positions before softmax
 		scores = Inferno::masked_fill(scores, mask, -1e9f);
-		//std::cout << scores << std::endl;
+		
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "scores after applying mask" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << scores << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 
 		Inferno::Tensor attn = Inferno::Softmax(scores, -1);                         // [B, H, T, T]
-		//std::cout << attn << std::endl;
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "attn scores after softmax" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << attn << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 		Inferno::Tensor y = matmul(attn, v);                                // [B, H, T, D]
 
-		//std::cout << "attn @ V" << std::endl;
-		//std::cout << y << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "scores after matmul(attn, v)" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << y << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 		y = y.transpose(1, 2);                                    // [B, T, H, D]
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "y = y.transpose(1, 2); " << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << y << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
 		y = y.contiguous();
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "y = y.contiguous(); " << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << y << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
 		y = y.reshape({ B, T, m_embed_dim });                       // [B, T, C]
 
-		//std::cout << "after transpose/contig/reshape" << std::endl;
-		//std::cout << y << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "y = y.reshape({ B, T, m_embed_dim }); " << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << y << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
-		//std::cout << "W_out" << std::endl;
-		//std::cout << W_out << std::endl;
+		
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "W_out weights and bias" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << W_out << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 		y = W_out.forward(y);                                   // [B, T, C]
 
-		//std::cout << y << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "After Linear W_out" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << y << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 		return y;
 	}
@@ -306,47 +402,63 @@ public:
 	}
 
 	Inferno::Tensor forward(Inferno::Tensor& x) override {
-		//std::cout << feedforward1 << std::endl;
-		//std::cout << feedforward2 << std::endl;
-		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "\n");
-		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "Transformer Block forward");
-		//std::cout << x << std::endl;
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Feedforward 1" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << feedforward1 << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Feedforward 2" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << feedforward2 << std::endl;		
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Transformer Block forward" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << x << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
+		
 		Inferno::Tensor normed = layernorm1.forward(x);
-		//std::cout << normed << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << normed << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 		Inferno::Tensor attn_out = attn.forward(normed);
-		//std::cout << "attn_out" << std::endl;
-		//std::cout << attn_out << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << attn_out << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 		x = x + attn_out;
-		//std::cout << "after x = x + attn_out" << std::endl;
-		//std::cout << x << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "after x = x + attn_out" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << x << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 		Inferno::Tensor normed2 = layernorm2.forward(x);
-		//std::cout << "normed2" << std::endl;
-		//std::cout << normed2 << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << normed2 << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
-		//std::cout << "feedforward1 weights and bias" << std::endl;
-		//std::cout << feedforward1 << std::endl;
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Feedforward1 weights and bias" << std::endl;		
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << feedforward1 << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;		
+		
 		
 		Inferno::Tensor n = feedforward1.forward(normed2);
-		//std::cout << "after feedfoward1" << std::endl;
-		//std::cout << n << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "After Feedforward 1" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << n << std::endl;
 
 		n = Inferno::gelu(n);
-		//std::cout << "after gelu" << std::endl;
-		//std::cout << n << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "After gelu" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << n << std::endl;
+		
 
-		//std::cout << "feedforward2 weights and bias" << std::endl;
-		//std::cout << feedforward2 << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Feedforward2 weights and bias" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << feedforward2 << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 		Inferno::Tensor ff = feedforward2.forward(n);
-		//std::cout << "after feedfoward2" << std::endl;
-		//std::cout << ff << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "After Feedforward 2" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << ff << std::endl;
 
 		Inferno::Tensor out = x + ff;
-		//std::cout << "after out = x + ff" << std::endl;
-		//std::cout << out << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "after out = x + ff" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << out << std::endl;		
 
 		return out;
 	}
@@ -402,36 +514,54 @@ public:
 
 	Inferno::Tensor forward(Inferno::Tensor& input) {
 
-		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "\n");
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "GPTModel forward" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
-		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "GPTModel forward");
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Input tensor" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << input << std::endl;
 		//Get embedding vectors
-		//std::cout << emb1 << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Embedding weights and bias" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << emb1 << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
+
 		Inferno::Tensor x = emb1.forward(input);
-		//std::cout << x << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "After embedding layer" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << x << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 		//Add positional encoding
 		x = pos_enc.forward(x);
-		//std::cout << x << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "After positional encoding" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << x << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Starting loop of " << transblks.size() << " transormer blocks" << std::endl;		
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 		// pump it through the Transformer blocks
 		for (int blk_idx = 0; blk_idx < transblks.size(); blk_idx++) {
 			//for (TransformerBlock tblk : transblks) {
-			Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "Block: " + std::to_string(blk_idx));
+			Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Block: " << blk_idx << std::endl;
 			x = transblks[blk_idx].forward(x);
 		}
-		//Layer norm
-		//std::cout << "LayerNorm" << std::endl;
-		//Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "LayerNorm");
+
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Output of transformer blocks and input to layernorm" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << x << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+		
+
 		x = layernorm1.forward(x);
-		//std::cout << x << std::endl;
-		//Linear
-		Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "Linear");
-		Inferno::Tensor logits = linear1.forward(x);
-		//std::cout << x << std::endl;		
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "After layer norm" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << x << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 		
+		Inferno::Tensor logits = linear1.forward(x);
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "After Linear" << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << logits << std::endl;
+		Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 		return logits;
 	}
@@ -457,10 +587,12 @@ int main() {
 
 
 
-	//Logger::SetLogLevel(Logger::LogLevel::LOGLEVEL_ERROR);
-	//Logger::SetLogLevel(Logger::LogLevel::LOGLEVEL_DEBUG);
-	Logger::SetLogLevel(Logger::LogLevel::LOGLEVEL_INFO);
-	Logger::Start("logs/applicationlog.txt");
+	Logg::SetLevel(Logg::LogLevel::LOGLEVEL_ERROR);
+	Logg::SetLevel(Logg::LogLevel::LOGLEVEL_DEBUG);
+	Logg::SetLevel(Logg::LogLevel::LOGLEVEL_INFO);
+	Logg::Start("logs/applicationlog.txt");
+
+	
 
 	Inferno::RandomGenerator::initializeWithSeed(42);
 
@@ -498,15 +630,17 @@ int main() {
 	size_t vocabulary_size = 50257;
 	size_t context_size = 1024;
 	size_t embedding_dim = 768;
-	size_t numheads = 16;
-	size_t numblocks = 16;
+	size_t numheads = 12;
+	size_t numblocks = 12;
 
 
+	size_t batch_size = 1;
 
-	std::vector<int> data(context_size, 0);
+
+	std::vector<int> data(batch_size * context_size, 0);
 	data[0] = 1;
-	Inferno::Tensor target(Inferno::DType::Int32, data, { 1, context_size }, "target", device);
-	Inferno::Tensor tokens = Inferno::Tensor(Inferno::DType::Int32, Inferno::RandomGenerator::generateRandomIntVector(context_size, 0, vocabulary_size - 1), { 1,context_size }, "tokens", device);
+	Inferno::Tensor target(Inferno::DType::Int32, data, { batch_size, context_size }, "target", device);
+	Inferno::Tensor tokens = Inferno::Tensor(Inferno::DType::Int32, Inferno::RandomGenerator::generateRandomIntVector(batch_size * context_size, 0, vocabulary_size - 1), { batch_size, context_size }, "tokens", device);
 
 
 	//Inferno::Tensor tokens(Inferno::DType::Int32, { 42, 13, 1, 0, 99, 34, 23, 78, 1, 25, 22, 45, 02, 13, 67, 88 }, { 16 }, "tokens", device);
@@ -520,10 +654,10 @@ int main() {
 
 
 
-	//MyModel model(layers);
+	
 	GPTModel model(vocabulary_size, context_size, embedding_dim, numheads, numblocks);
 
-	//TestModel model(layers);
+	
 
 	model.to(device);
 
@@ -534,7 +668,13 @@ int main() {
 
 	Inferno::Timer t1("matmul");
 
-	std::cout << tokens << std::endl;
+	Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Tokens into model" << std::endl;
+	Logg::Append(Logg::LogLevel::LOGLEVEL_INFO) << tokens << std::endl;
+	Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
+	Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << "Target" << std::endl;
+	Logg::Append(Logg::LogLevel::LOGLEVEL_INFO) << target << std::endl;
+	Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 	int epochs = 1;
 	int loopcount = 10000;
@@ -547,7 +687,7 @@ int main() {
 			//Inferno::Tensor prediction = model.forward(input);	
 
 			//for intference
-			//Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "next logits slice");
+			//Logg::Append(Logg::LogLevel::LOGLEVEL_DEBUG, "next logits slice");
 			//Inferno::Tensor next_logits = x.slice(-2, m_context_size - 1, m_context_size - 1);
 			//Inferno::Tensor next_logits = Inferno::select(x, -2, m_context_size - 1); // {B,V}
 			//std::cout << next_logits << std::endl;		
@@ -572,7 +712,7 @@ int main() {
 
 			Inferno::Tensor lossp = loss.to(Inferno::Device::cpu());
 
-			std::cout
+			Logg::Append(Logg::LogLevel::LOGLEVEL_INFO) 
 				<< std::fixed
 				<< "Epoch: " << e
 				<< " Iter: " << i
@@ -583,14 +723,7 @@ int main() {
 				<< std::endl;			
 		}
 	}
-
-	//std::cout << model.fc1.m_weights << std::endl;
-	//std::cout << model.fc1.m_biases << std::endl;
-
-	//std::cout << input << std::endl;
-	//std::cout << tokens << std::endl;
-	//std::cout << target << std::endl;
-
+	
 
 	
 

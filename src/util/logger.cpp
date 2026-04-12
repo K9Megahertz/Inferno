@@ -28,7 +28,7 @@
 #include "Logger.h"
 
 std::ofstream Logger::file;
-Logger::LogLevel Logger::m_currentloglevel = Logger::LogLevel::LOGLEVEL_DEBUG;
+Logger::LogLevel Logger::m_currentloglevel = Logger::LogLevel::LOGLEVEL_INFO;
 
 
 

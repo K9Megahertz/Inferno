@@ -27,20 +27,17 @@ namespace Inferno {
 
     Tensor CrossEntropyLoss::forward(Tensor& logits, Tensor& target) {
         if (logits.device() != target.device()) {
-            Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,
-                "Incompatible device types on tensor parameters in cross_entropy_loss");
+            Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,"Incompatible device types on tensor parameters in cross_entropy_loss");
             exit(1);
         }
 
         if (logits.ndim() < 2) {
-            Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,
-                "cross_entropy_loss requires logits rank >= 2");
+            Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,"cross_entropy_loss requires logits rank >= 2");
             exit(1);
         }
 
         if (target.ndim() != logits.ndim() - 1) {
-            Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,
-                "cross_entropy_loss requires target rank = logits rank - 1");
+            Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,"cross_entropy_loss requires target rank = logits rank - 1");
             exit(1);
         }
 
@@ -48,34 +45,29 @@ namespace Inferno {
         // target shape [...]
         for (size_t i = 0; i < target.ndim(); i++) {
             if (target.shape()[i] != logits.shape()[i]) {
-                Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,
-                    "Shape mismatch on tensor parameters in cross_entropy_loss");
+                Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,"Shape mismatch on tensor parameters in cross_entropy_loss");
                 exit(1);
             }
         }
 
         if (target.dtype() != DType::Int32) {
-            Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,
-                "cross_entropy_loss currently requires target dtype = Int32");
+            Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,"cross_entropy_loss currently requires target dtype = Int32");
             exit(1);
         }
 
         if (!(logits.dtype() == DType::Float32 || logits.dtype() == DType::Float64)) {
-            Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,
-                "cross_entropy_loss currently requires logits dtype = Float32 or Float64");
+            Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,"cross_entropy_loss currently requires logits dtype = Float32 or Float64");
             exit(1);
         }
 
         // Optional safety check if your raw kernels assume contiguous memory.
         if (!logits.is_contiguous()) {
-            Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,
-                "cross_entropy_loss currently requires contiguous logits");
+            Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,"cross_entropy_loss currently requires contiguous logits");
             exit(1);
         }
 
         if (!target.is_contiguous()) {
-            Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,
-                "cross_entropy_loss currently requires contiguous target");
+            Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,"cross_entropy_loss currently requires contiguous target");
             exit(1);
         }
 
@@ -97,14 +89,12 @@ namespace Inferno {
 
             switch (logits.device().m_type) {
             case DeviceType::CPU:
-                Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG,
-                    "CPU Code path - Using normal cross_entropy_loss path");
+                Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG,"CPU Code path - Using normal cross_entropy_loss path");
                 cpu_cross_entropy_loss(lptr, tptr, optr, rows, vocab_size);
                 break;
 
             case DeviceType::CUDA:
-                Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG,
-                    "CUDA Code path - Using normal cross_entropy_loss path");
+                Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG,"CUDA Code path - Using normal cross_entropy_loss path");
                 cuda_cross_entropy_loss(lptr, tptr, optr, rows, vocab_size);
                 break;
 

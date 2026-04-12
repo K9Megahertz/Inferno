@@ -547,31 +547,57 @@ namespace Inferno {
 
 
 	Tensor Tensor::to(const Device& dst) const {
-		if (device() == dst) {
+
+		auto dev = device();
+		if (dev == dst) {
 			return *this; // or return shallow copy / shared storage
 		}
+
+
+		auto src_impl = GetImpl(*this);
 
 		//Tensor out(dtype(), shape(), name(), dst);
 		Tensor out;
 
-		if (GetImpl(*this)->is_view()) {
+		auto out_impl = std::make_shared<TensorImpl>();
+
+		/*if (src_impl->is_view()) {
 			out = Tensor(dtype(), GetImpl(*this)->get_base()->shape(), name(), dst);
 		}
 		else {
 			out = Tensor(dtype(), shape(), name(), dst);
-		}
+		}*/
 
-		//Tensor out(dtype(), shape(), name(), dst);
-		out.shape() = this->shape();
-		out.offset() = this->offset();
-		out.strides() = this->strides();
-		out.set_requires_grad(this->requires_grad());
+
+
+		out_impl->dtype() = src_impl->dtype();
+		out_impl->shape() = src_impl->shape();
+		out_impl->strides() = src_impl->strides();
+		out_impl->offset() = src_impl->offset();		
+		out_impl->set_requires_grad(src_impl->requires_grad());
+		out_impl->device() = dst;
+		out_impl->set_is_view(src_impl->is_view());
+		out_impl->name() = src_impl->name();
+		out_impl->id() = Inferno::IDBroker::GenID();
+		
 
 		//size_t bytes = m_impl->nbytes();
-		size_t bytes = m_impl->data()->m_numbytes;
+		size_t bytes = m_impl->data()->nbytes();
+
+		if (dst.is_cpu()) {
+			out_impl->data() = std::make_shared<CPUStorage>(bytes);
+		}
+		else if (dst.is_cuda()) {
+			out_impl->data() = std::make_shared<CUDAStorage>(bytes);
+		}
+		else {
+			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,
+				"Attempt to create TensorImpl with unknown device type.");
+			exit(1);
+		}		
 
 		auto* src_ptr = GetImpl(*this)->raw_ptr();
-		auto* dst_ptr = GetImpl(out)->raw_ptr();
+		auto* dst_ptr = out_impl->raw_ptr();
 
 		if (device().is_cpu() && dst.is_cuda()) {
 			check_cuda(cudaMemcpy(dst_ptr, src_ptr, bytes, cudaMemcpyHostToDevice), "Failed to memcpy in to");
@@ -582,16 +608,28 @@ namespace Inferno {
 		else if (device().is_cuda() && dst.is_cuda()) {
 			check_cuda(cudaMemcpy(dst_ptr, src_ptr, bytes, cudaMemcpyDeviceToDevice), "Failed to memcpy in to");
 		}
+		else if (device().is_cpu() && dst.is_cpu()) {
+			memcpy(dst_ptr, src_ptr, bytes);
+		}
+		else {
+			Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,"Attempt to copy data failed.");
+			exit(1);
+		}
 
 
-		if (GetImpl(*this)->grad()) {
-			Tensor t = *GetImpl(*this)->grad();
+		if (src_impl->grad()) {
+			Tensor t = *src_impl->grad();
 			Tensor blah = t.to(dst);
-			GetImpl(out)->set_grad(blah);
+			out_impl->set_grad(blah);
 
 		}
 
+		out.m_device = dst;
+
+
+		SetImpl(out, out_impl);
 		return out;
+		
 	}
 
 

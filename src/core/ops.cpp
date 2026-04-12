@@ -584,7 +584,7 @@ namespace Inferno {
 			case DeviceType::CUDA:
 				Logger::Append(Logger::LogLevel::LOGLEVEL_DEBUG, "CUDA Code path - Using normal matmul path");
 				if (A.is_contiguous() && B.is_contiguous())
-					cuda_matmul_fast2<AT, BT, RT>(aptr, bptr, optr, a_padded_shape, a_padded_strides, b_padded_shape, b_padded_strides, out_shape);
+					cuda_matmul_fast<AT, BT, RT>(aptr, bptr, optr, a_padded_shape, a_padded_strides, b_padded_shape, b_padded_strides, out_shape);
 				else 
 					cuda_matmul<AT, BT, RT>(aptr, bptr, optr, a_padded_shape, a_padded_strides, b_padded_shape, b_padded_strides, out_shape);
 				break;
@@ -701,10 +701,10 @@ namespace Inferno {
 		impl->device() = base_impl->device();
 		impl->set_is_view(true);
 
-		if (base_impl->is_view()) 
+		/*if (base_impl->is_view()) 
 			impl->set_base(base_impl->get_base());
 		else
-			impl->set_base(GetImpl(base));
+			impl->set_base(GetImpl(base));*/
 		
 		impl->name() = name;		
 		impl->id() = Inferno::IDBroker::GenID();			

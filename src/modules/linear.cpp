@@ -18,9 +18,13 @@ namespace Inferno {
 
 	Linear::Linear(size_t in_features, size_t out_features, Device device, DType dtype) {
 
+		float limit = sqrt(6 / (in_features + out_features));
 
-		float lowrange = -1.0f;
-		float highrange = 1.0f;
+
+		float lowrange = -limit;
+		float highrange = limit;
+
+		
 
 		size_t count = in_features * out_features;
 
@@ -37,10 +41,7 @@ namespace Inferno {
 			}
 			else if constexpr (std::is_same_v<RT, double>) {
 				weight_data = Inferno::RandomGenerator::generateRandomDoubleVector(count, lowrange, highrange);
-			}
-			/*else if constexpr (std::is_same_v<AT, int>) {
-				weight_data = Inferno::RandomGenerator::generateRandomIntVector(count, -1, 1);
-			}*/
+			}			
 			else {
 				Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "Unsupported dtype in Linear");
 				std::exit(1);
@@ -59,10 +60,7 @@ namespace Inferno {
 			}
 			else if constexpr (std::is_same_v<RT, double>) {
 				bias_data = Inferno::RandomGenerator::generateRandomDoubleVector(out_features, lowrange, highrange);
-			}
-			/*else if constexpr (std::is_same_v<AT, int>) {
-				bias_data = Inferno::RandomGenerator::generateRandomIntVector(out_features, -1, 1);
-			}*/
+			}			
 			else {
 				Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR, "Unsupported dtype in Linear");
 				std::exit(1);

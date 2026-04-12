@@ -97,7 +97,9 @@ namespace Inferno {
 
 		//Device defs
 		Device& device();
-		const Device& device() const { return m_device; }
+		const Device& device() const { 
+			return m_device; 
+		}
 		Tensor to(const Device& dst) const;
 
 		//overload defs
