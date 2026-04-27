@@ -91,6 +91,7 @@ namespace Inferno {
 			//m_id = m_impl->id();
 		}
 
+
 		
 
 		~Tensor() = default;
@@ -122,7 +123,9 @@ namespace Inferno {
 		std::shared_ptr<Storage>& data() const;
 		std::shared_ptr<Tensor>& grad();
 		std::shared_ptr<Tensor>& grad() const;		
-		Tensor Getgrad() const;
+		Tensor Getgrad() const;	
+
+
 
 		std::vector<size_t>& shape();
 		std::vector<size_t>& shape() const;

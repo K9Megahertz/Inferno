@@ -1228,7 +1228,5 @@ namespace Inferno {
 
 		return out;
 	}
-
-
 	
 }

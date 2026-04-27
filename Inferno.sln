@@ -15,6 +15,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "InfernoTokenizer", "Inferno
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PreTokenizer", "PreTokenizer\PreTokenizer.vcxproj", "{A15CDFB3-3B28-4CFE-9DA0-355128A85B68}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DatasetTokenizer", "DatasetTokenizer\DatasetTokenizer.vcxproj", "{516632E5-F7C7-4B64-AD34-FE522DAD8629}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -71,6 +73,14 @@ Global
 		{A15CDFB3-3B28-4CFE-9DA0-355128A85B68}.Release|x64.Build.0 = Release|x64
 		{A15CDFB3-3B28-4CFE-9DA0-355128A85B68}.Release|x86.ActiveCfg = Release|Win32
 		{A15CDFB3-3B28-4CFE-9DA0-355128A85B68}.Release|x86.Build.0 = Release|Win32
+		{516632E5-F7C7-4B64-AD34-FE522DAD8629}.Debug|x64.ActiveCfg = Debug|x64
+		{516632E5-F7C7-4B64-AD34-FE522DAD8629}.Debug|x64.Build.0 = Debug|x64
+		{516632E5-F7C7-4B64-AD34-FE522DAD8629}.Debug|x86.ActiveCfg = Debug|Win32
+		{516632E5-F7C7-4B64-AD34-FE522DAD8629}.Debug|x86.Build.0 = Debug|Win32
+		{516632E5-F7C7-4B64-AD34-FE522DAD8629}.Release|x64.ActiveCfg = Release|x64
+		{516632E5-F7C7-4B64-AD34-FE522DAD8629}.Release|x64.Build.0 = Release|x64
+		{516632E5-F7C7-4B64-AD34-FE522DAD8629}.Release|x86.ActiveCfg = Release|Win32
+		{516632E5-F7C7-4B64-AD34-FE522DAD8629}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

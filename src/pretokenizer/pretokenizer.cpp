@@ -60,7 +60,7 @@ namespace Tokenizer {
 
     }
 
-    PreTokenizer::~PreTokenizer() = default;
+    PreTokenizer::~PreTokenizer() = default;    
 
     
 
@@ -69,33 +69,7 @@ namespace Tokenizer {
         m_impl->process_string(text);
         m_impl->flush_current_piece();
         return m_impl->pieces();
-    }
-
-
-    // Process a file from disk.
-    /*std::unordered_map<std::string, uint64_t> PreTokenizer::process_file(const std::string& filename) {
-
-        // Open the file in binary mode.
-        // Binary mode is important because we want the exact bytes from disk.
-        // We do not want newline translation or any text-mode behavior.
-        std::ifstream in(filename, std::ios::binary);
-
-        // If the file failed to open, throw an error.
-        if (!in) {
-            std::cout << "Failed to open file: " << filename << std::endl;
-            exit(1);
-        }
-
-        // Read the file chunk by chunk and process the bytes.
-        m_impl->process_stream(in);
-
-
-        // If there is a partially built token left at the end of the file,
-        // emit it now.
-        m_impl->flush_current_piece();
-
-        return m_impl->result();
-    }*/
+    }  
 
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -199,56 +173,6 @@ namespace Tokenizer {
         }
     }
 
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //
-    //  Function train()
-    //  Read bytes from any input stream in chunks and process each byte.
-    //
-    //
-    //
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    
-    /*void PreTokenizer::Impl::process_stream(std::istream& in) {
-
-        // Size of each chunk we read from the file.
-        // 1 << 20 = 1,048,576 bytes = 1 MB
-        // 1 << 24 = 16,777,216 bytes = 16 MB
-        const size_t BUFFER_SIZE = 1 << 24;
-        size_t total_bytes = 0;
-        // Temporary buffer that will hold each chunk from the stream.
-        std::vector<char> buffer(BUFFER_SIZE);
-
-        in.seekg(0, std::ios::end);
-        uint64_t filesize = (uint64_t)in.tellg();
-        in.seekg(0, std::ios::beg);
-
-        std::cout << filesize << std::endl;
-        // Try to read a full chunk.
-        // If that fails because we hit the end of file, gcount() may still be > 0
-        // for the final partial chunk, so we keep processing in that case too.
-        while (in.read(buffer.data(), static_cast<std::streamsize>(buffer.size())) || in.gcount() > 0) {
-
-            // How many bytes were actually read this time.
-            std::streamsize n = in.gcount();
-
-            // Process each byte in the chunk.
-            for (std::streamsize i = 0; i < n; ++i) {
-
-                // Convert char to unsigned char before classification.
-                // This avoids negative-char problems.
-                unsigned char b = static_cast<unsigned char>(buffer[i]);
-
-                // Hand this byte to the tokenizer logic.
-                process_byte(b);
-            }
-            total_bytes += n;
-            double percent = (static_cast<double>(total_bytes) / static_cast<double>(filesize)) * 100.0;
-            std::cout << "Bytes Processed: " << total_bytes << "  Percent complete: " << std::fixed << std::setprecision(2) << percent << "%" << std::endl;
-        }
-    }*/
 
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

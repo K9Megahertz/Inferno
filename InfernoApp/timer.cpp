@@ -71,7 +71,7 @@ namespace Inferno {
 
         TimePoint prev = m_start;
 
-        std::cout << "Timer [" << m_name << "]\n";
+        //std::cout << "Timer [" << m_name << "]\n";
 
         for (const auto& lap : m_laps) {
             std::chrono::duration<double, std::milli> segment = lap.time - prev;
@@ -91,7 +91,7 @@ namespace Inferno {
         std::chrono::duration<double, std::milli> final_segment = m_end - prev;
         std::chrono::duration<double, std::milli> total = m_end - m_start;
 
-        std::cout
+        /*std::cout
             << "  stop: "
             << std::fixed
             << std::setprecision(3)
@@ -103,7 +103,7 @@ namespace Inferno {
             << std::fixed
             << std::setprecision(3)
             << total.count()
-            << " ms\n";
+            << " ms\n";*/
     }
 
 
