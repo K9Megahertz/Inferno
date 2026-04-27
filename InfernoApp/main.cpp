@@ -1094,8 +1094,8 @@ int main() {
 	size_t vocabulary_size = 22197;
 	size_t context_size = 1024;
 	size_t embedding_dim = 768;
-	size_t numheads = 4;
-	size_t numblocks = 4;
+	size_t numheads = 12;
+	size_t numblocks = 12;
 
 	 
 	size_t batch_size = 8;
