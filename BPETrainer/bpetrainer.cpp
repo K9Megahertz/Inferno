@@ -36,8 +36,8 @@ void BPETrainer::train(const BPETrainerConfig& config) {
 	std::cout << "Built pairmap with: " << pairmap.size() << " entries" << std::endl;
 
 	
-	size_t maxvocab = config.target_vocab_size;
-	size_t vocabsize = config.initial_token_count;
+	size_t maxvocab = config.target_vocab_size + 256 - 1;      //whatever -s was
+	size_t vocabsize = config.initial_token_count;   //starts off at 256
 
     //Initialize initial vocabulary
     for (uint32_t i = 0; i < 256; i++) {

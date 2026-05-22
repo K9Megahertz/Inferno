@@ -1,5 +1,5 @@
-#include <inferno/inferno.h>
-//#include "testtools.h"
+//#include <inferno/inferno.h>
+#include "testtools.h"
 
 
 void RunAdditionTests(Inferno::Device device);
@@ -10,6 +10,20 @@ void RunAdditionTests(Inferno::Device device);
 
 int main() {
 
+
+    TestStats stats;
+
+    Inferno::Device device = Inferno::Device::cpu();
+
+    Inferno::Tensor a(Inferno::DType::Int32, std::vector<int>{1, 0, 1, 0, 1, 0, 1, 0, 1, 0}, { 10 }, "a", device);
+
+    Inferno::Tensor b(Inferno::DType::Int32, std::vector<int>{1, 0, 1, 0, 1, 0, 1, 0, 1, 0}, { 10 }, "b", device);
+
+    Inferno::Tensor expected(Inferno::DType::Int32, std::vector<int>{2, 0, 2, 0, 2, 0, 2, 0, 2, 0}, { 10 }, "expected", device);
+
+    Inferno::Tensor actual = a + b;
+
+    ExpectTensorEq("add Int32 simple", actual, expected, stats);
 
 
 

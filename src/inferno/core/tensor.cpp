@@ -2,6 +2,7 @@
 #include "inferno/core/ops_impl.h"
 #include "tensorimpl.h"
 #include "inferno/gradfn/transposebackward.h"
+#include "inferno/gradfn/sumbackward.h"
 #include "inferno/gradengine/engine.h"
 #include "inferno/cuda/cudaops.h"
 #include "inferno/core/cpuops.h"
@@ -204,7 +205,7 @@ namespace Inferno {
 			//Print out data
 			if (p->data()) {
 
-				size_t numdata = std::min((int)tcpu.numel(), 100);
+				size_t numdata = std::min((int)tcpu.numel(), 192);
 
 				dptr = p->data_as_ptr<AT>();
 
@@ -1178,6 +1179,52 @@ namespace Inferno {
 		});
 
 		return out;
+	}
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	//  Function sum
+	//
+	//
+	//
+	//
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	Tensor Tensor::sum() {
+		return dispatchFloat(dtype(), [&](auto TA) {
+			using AT = typename decltype(TA)::type;
+
+
+			
+
+			Tensor out(dtype(), { 1 }, "sum", device(), requires_grad());
+
+			AT* aptr = GetImpl(*this)->data_as_ptr<AT>();
+			AT* optr = GetImpl(out)->data_as_ptr<AT>();
+
+			switch (device().m_type) {
+			case DeviceType::CPU:
+				cpu_sum<AT>(aptr, optr, numel());
+				break;
+
+			case DeviceType::CUDA:
+				cuda_sum<AT>(aptr, optr, numel()); 
+				break;
+
+			default:
+				INFERNO_LOG_ERROR() << "Invalid device";
+				std::exit(1);
+			}
+
+			if (grad_enabled && requires_grad()) {
+				INFERNO_LOG_DEBUG() << "Transpose - Making a TransposeBackward node" << std::endl;
+				GetImpl(out)->gradfn() = std::make_shared<SumBackward>(*this);
+			}			
+
+			return out;
+			});
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

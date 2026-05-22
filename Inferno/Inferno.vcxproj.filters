@@ -216,6 +216,12 @@
     <ClCompile Include="..\src\inferno\util\logging.cpp">
       <Filter>Source Files\util</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\inferno\gradfn\sumbackward .cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\inferno\gradfn\maskedfillbackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\inferno\core\tensor.h">
@@ -401,6 +407,12 @@
     <ClInclude Include="..\src\inferno\util\logging_internal.h">
       <Filter>Header Files\util</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\inferno\gradfn\sumbackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\inferno\gradfn\maskedfillbackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="..\src\inferno\cuda\cudaadd.cu">
@@ -476,6 +488,9 @@
       <Filter>Source Files\cuda</Filter>
     </CudaCompile>
     <CudaCompile Include="..\src\inferno\cuda\cudaflashattention.cu">
+      <Filter>Source Files\cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\src\inferno\cuda\cudasum.cu">
       <Filter>Source Files\cuda</Filter>
     </CudaCompile>
   </ItemGroup>

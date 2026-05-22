@@ -37,6 +37,7 @@ namespace Inferno {
 		NoGradGuard guard;
 
 		Tensor g_out = Engine::grad_in(this, 0);
+		
 
 		const bool a_vec = (m_A.ndim() == 1);
 		const bool b_vec = (m_B.ndim() == 1);
@@ -77,11 +78,19 @@ namespace Inferno {
 			G2.strides() = new_strides;
 		}
 
-		// dA = G @ B^T
-		Tensor g_a = matmul_impl(G2, B2, "MMBackward_dA", false, true);
 
+
+
+		// dA = G @ B^T
+		//Tensor BT = B2.transpose(-1, -2).contiguous();
+		Tensor g_a = matmul_impl(G2, B2, "MMBackward_dA", false, true);
+		
+		//Tensor g_a = matmul_impl(G2, BT, "MMBackward_dA", false, false);
+		
 		// dB = A^T @ G
+		//Tensor AT = A2.transpose(-1, -2).contiguous();
 		Tensor g_b = matmul_impl(A2, G2, "MMBackward_dB", true, false);
+		//Tensor g_b = matmul_impl(AT, G2, "MMBackward_dB", false, false);
 
 		// Restore vector gradient shapes before reduction
 		if (a_vec) {

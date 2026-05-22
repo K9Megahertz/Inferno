@@ -39,21 +39,18 @@ namespace Inferno {
         size_t N,
         size_t total_batches,
         bool transA,
-        bool transB)
-    {
+        bool transB
+    ) {
+        const size_t linear =
+            static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
-        //every thread will get its position in the final matrix. 
-        //this will be the M and N of where it is in the matric as 
-        //well as the batch_idx  i.e {0,0} or {0,1,0} or {0,1,2} etc...
-        const size_t linear = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
         const size_t total_out = total_batches * M * N;
 
         if (linear >= total_out) {
             return;
         }
 
-        // Decode linear index into:
-        // batch_linear, m, n
+        // Decode linear -> batch, m, n
         size_t tmp = linear;
 
         const size_t n = tmp % N;
@@ -66,18 +63,14 @@ namespace Inferno {
 
         size_t batch_idx[MAX_DIMS];
 
-
-        //figure out the batch_idx using whats left over from tmp from above
         for (int d = batch_rank - 1; d >= 0; --d) {
             batch_idx[d] = batch_linear % out_batch_shape[d];
             batch_linear /= out_batch_shape[d];
         }
-        
+
         size_t a_batch_offset = 0;
         size_t b_batch_offset = 0;
 
-
-        //loop through the batch indices, this will be batch_rank in total, which is the total rank minus the M and N ranks. so total - 2
         for (int d = 0; d < batch_rank; ++d) {
             const size_t a_idx = (a_batch_shape[d] == 1) ? 0 : batch_idx[d];
             const size_t b_idx = (b_batch_shape[d] == 1) ? 0 : batch_idx[d];
@@ -86,28 +79,41 @@ namespace Inferno {
             b_batch_offset += b_idx * b_strides[d];
         }
 
-        const size_t a_base = a_batch_offset;// *(M * K);
-        const size_t b_base = b_batch_offset;// *(K * N);
+        const size_t a_base = a_batch_offset;
+        const size_t b_base = b_batch_offset;
+
+        const size_t a_row_stride = a_strides[a_rank - 2];
+        const size_t a_col_stride = a_strides[a_rank - 1];
+
+        const size_t b_row_stride = b_strides[b_rank - 2];
+        const size_t b_col_stride = b_strides[b_rank - 1];
 
         RT sum = static_cast<RT>(0);
 
         for (size_t k = 0; k < K; ++k) {
-            size_t a_idx = m * a_strides[a_rank - 2] + k * a_strides[a_rank - 1];
-            size_t b_idx = k * b_strides[b_rank - 2] + n * b_strides[b_rank - 1];
+            size_t a_row = transA ? k : m;
+            size_t a_col = transA ? m : k;
 
-            size_t a_offset = a_base + a_idx;
-            size_t b_offset = b_base + b_idx;
+            size_t b_row = transB ? n : k;
+            size_t b_col = transB ? k : n;
 
-            //const size_t a_offset = a_base + m * K + k;
-            //const size_t b_offset = b_base + k * N + n;
+            size_t a_offset =
+                a_base +
+                a_row * a_row_stride +
+                a_col * a_col_stride;
 
-            sum += static_cast<RT>(aptr[a_offset]) * static_cast<RT>(bptr[b_offset]);
+            size_t b_offset =
+                b_base +
+                b_row * b_row_stride +
+                b_col * b_col_stride;
+
+            sum +=
+                static_cast<RT>(aptr[a_offset]) *
+                static_cast<RT>(bptr[b_offset]);
         }
 
         outptr[linear] = sum;
     }
-
-
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //
@@ -141,9 +147,16 @@ namespace Inferno {
             exit(1);
         }
 
-        const size_t M = a_shape[a_rank - 2];
-        const size_t K = a_shape[a_rank - 1];
-        const size_t N = b_shape[b_rank - 1];
+        //const size_t M = a_shape[a_rank - 2];
+        //const size_t K = a_shape[a_rank - 1];
+        //const size_t N = b_shape[b_rank - 1];
+
+        const size_t M = transA ? a_shape[a_rank - 1] : a_shape[a_rank - 2];
+        const size_t K = transA ? a_shape[a_rank - 2] : a_shape[a_rank - 1];
+
+        //const size_t B_K = transB ? b_shape[b_rank - 1] : b_shape[b_rank - 2];
+        const size_t N = transB ? b_shape[b_rank - 2] : b_shape[b_rank - 1];
+
 
         // Batch dims only
         std::vector<size_t> a_batch_shape(a_shape.begin(), a_shape.end() - 2);
@@ -587,30 +600,20 @@ namespace Inferno {
         size_t* d_a_strides = nullptr;
         size_t* d_b_strides = nullptr;
 
-        check_cuda(cudaMalloc(&d_out_batch_shape, batch_rank * sizeof(size_t)),
-            "cuda_matmul_fast cudaMalloc d_out_batch_shape failed");
-        check_cuda(cudaMalloc(&d_a_batch_shape, batch_rank * sizeof(size_t)),
-            "cuda_matmul_fast cudaMalloc d_a_batch_shape failed");
-        check_cuda(cudaMalloc(&d_b_batch_shape, batch_rank * sizeof(size_t)),
-            "cuda_matmul_fast cudaMalloc d_b_batch_shape failed");
-        check_cuda(cudaMalloc(&d_a_strides, a_rank * sizeof(size_t)),
-            "cuda_matmul_fast cudaMalloc d_a_strides failed");
-        check_cuda(cudaMalloc(&d_b_strides, b_rank * sizeof(size_t)),
-            "cuda_matmul_fast cudaMalloc d_b_strides failed");
+        check_cuda(cudaMalloc(&d_out_batch_shape, batch_rank * sizeof(size_t)), "cuda_matmul_fast cudaMalloc d_out_batch_shape failed");
+        check_cuda(cudaMalloc(&d_a_batch_shape, batch_rank * sizeof(size_t)), "cuda_matmul_fast cudaMalloc d_a_batch_shape failed");
+        check_cuda(cudaMalloc(&d_b_batch_shape, batch_rank * sizeof(size_t)), "cuda_matmul_fast cudaMalloc d_b_batch_shape failed");
+        check_cuda(cudaMalloc(&d_a_strides, a_rank * sizeof(size_t)), "cuda_matmul_fast cudaMalloc d_a_strides failed");
+        check_cuda(cudaMalloc(&d_b_strides, b_rank * sizeof(size_t)), "cuda_matmul_fast cudaMalloc d_b_strides failed");
 
         if (batch_rank > 0) {
-            check_cuda(cudaMemcpy(d_out_batch_shape, out_batch_shape.data(), batch_rank * sizeof(size_t), cudaMemcpyHostToDevice),
-                "cuda_matmul_fast cudaMemcpy d_out_batch_shape failed");
-            check_cuda(cudaMemcpy(d_a_batch_shape, a_batch_shape.data(), batch_rank * sizeof(size_t), cudaMemcpyHostToDevice),
-                "cuda_matmul_fast cudaMemcpy d_a_batch_shape failed");
-            check_cuda(cudaMemcpy(d_b_batch_shape, b_batch_shape.data(), batch_rank * sizeof(size_t), cudaMemcpyHostToDevice),
-                "cuda_matmul_fast cudaMemcpy d_b_batch_shape failed");
+            check_cuda(cudaMemcpy(d_out_batch_shape, out_batch_shape.data(), batch_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_matmul_fast cudaMemcpy d_out_batch_shape failed");
+            check_cuda(cudaMemcpy(d_a_batch_shape, a_batch_shape.data(), batch_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_matmul_fast cudaMemcpy d_a_batch_shape failed");
+            check_cuda(cudaMemcpy(d_b_batch_shape, b_batch_shape.data(), batch_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_matmul_fast cudaMemcpy d_b_batch_shape failed");
         }
 
-        check_cuda(cudaMemcpy(d_a_strides, a_strides.data(), a_rank * sizeof(size_t), cudaMemcpyHostToDevice),
-            "cuda_matmul_fast cudaMemcpy d_a_strides failed");
-        check_cuda(cudaMemcpy(d_b_strides, b_strides.data(), b_rank * sizeof(size_t), cudaMemcpyHostToDevice),
-            "cuda_matmul_fast cudaMemcpy d_b_strides failed");
+        check_cuda(cudaMemcpy(d_a_strides, a_strides.data(), a_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_matmul_fast cudaMemcpy d_a_strides failed");
+        check_cuda(cudaMemcpy(d_b_strides, b_strides.data(), b_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_matmul_fast cudaMemcpy d_b_strides failed");
 
         dim3 block(MATMUL_TILE, MATMUL_TILE);
         dim3 grid(

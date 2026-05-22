@@ -37,6 +37,8 @@ namespace Inferno {
 	template<typename AT>
 	void cuda_negate(const AT* aptr, AT* outptr, size_t N);
 
+	template<typename AT>
+	void cuda_sum(const AT* aptr, AT* outptr, size_t N);
 
 
 

@@ -13,6 +13,7 @@
 #include "inferno/gradfn/selectbackward.h"
 #include "inferno/gradfn/contiguousbackward.h"
 #include "inferno/gradfn/flashattentionbackward.h"
+#include "inferno/gradfn/maskedfillbackward.h"
 #include <logger/logger.h>
 #include "tensorimpl.h"
 #include "inferno/gradengine/engine.h"
@@ -550,6 +551,8 @@ namespace Inferno {
 
 			size_t b_rows = transB ? b_padded_shape[b_padded_shape.size() - 1] : b_padded_shape[b_padded_shape.size() - 2];
 			size_t b_cols = transB ? b_padded_shape[b_padded_shape.size() - 2] : b_padded_shape[b_padded_shape.size() - 1];
+
+		
 
 			if (a_cols != b_rows) {
 				INFERNO_LOG_ERROR() << "Incompatible dimensions for matrix multiplication" << std::endl;
@@ -1375,7 +1378,7 @@ namespace Inferno {
 	Tensor masked_fill(const Tensor& input, const Tensor& mask, float value)
 	{
 		// output shape should match input shape
-		Tensor out(input.dtype(), input.shape(), "masked_fill_out", input.device());
+		Tensor out(input.dtype(), input.shape(), "masked_fill_out", input.device(), input.requires_grad());
 
 		// You should probably also validate broadcast compatibility here
 		// between mask.shape() and input.shape().
@@ -1424,6 +1427,9 @@ namespace Inferno {
 			});
 		});
 	
+		if (input.requires_grad()) {			
+			GetImpl(out)->gradfn() = std::make_shared<MaskedFillBackward>(input, mask);
+		}
 
 		return out;
 	}

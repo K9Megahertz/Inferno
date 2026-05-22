@@ -15,7 +15,7 @@ namespace Inferno {
         int warmup_steps = 2000;  // start with this
 
         if (m_step < warmup_steps) {
-            lr = m_lr * (float(m_step) / float(warmup_steps));
+            lr = m_lr * (float(m_step + 1)  / float(warmup_steps));
         }
 
         INFERNO_LOG_DEBUG() << "Step: " << m_step << "  LR: " << lr << std::endl;

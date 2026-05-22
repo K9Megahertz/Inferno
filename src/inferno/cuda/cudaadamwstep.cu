@@ -39,7 +39,7 @@ namespace Inferno {
         float update = m_hat / (sqrtf(v_hat) + eps);
 
         if (weight_decay != 0.0f) {
-            update += weight_decay * pi;
+            pi *= (1.0f - lr * weight_decay);
         }
 
         pi -= lr * update;

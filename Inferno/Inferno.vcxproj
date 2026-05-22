@@ -38,6 +38,7 @@
     <ClCompile Include="..\src\inferno\gradfn\flashattentionbackward.cpp" />
     <ClCompile Include="..\src\inferno\gradfn\gelubackward.cpp" />
     <ClCompile Include="..\src\inferno\gradfn\layernormbackward.cpp" />
+    <ClCompile Include="..\src\inferno\gradfn\maskedfillbackward.cpp" />
     <ClCompile Include="..\src\inferno\gradfn\mmbackward.cpp" />
     <ClCompile Include="..\src\inferno\gradfn\mselossbackward.cpp" />
     <ClCompile Include="..\src\inferno\gradfn\multiplybackward.cpp" />
@@ -48,6 +49,7 @@
     <ClCompile Include="..\src\inferno\gradfn\slicebackward.cpp" />
     <ClCompile Include="..\src\inferno\gradfn\softmaxbackward.cpp" />
     <ClCompile Include="..\src\inferno\gradfn\subtractbackward.cpp" />
+    <ClCompile Include="..\src\inferno\gradfn\sumbackward .cpp" />
     <ClCompile Include="..\src\inferno\gradfn\transposebackward.cpp" />
     <ClCompile Include="..\src\inferno\loss\crossentropyloss.cpp" />
     <ClCompile Include="..\src\inferno\loss\loss.cpp" />
@@ -106,6 +108,7 @@
     <ClInclude Include="..\src\inferno\gradfn\flashattentionbackward.h" />
     <ClInclude Include="..\src\inferno\gradfn\gelubackward.h" />
     <ClInclude Include="..\src\inferno\gradfn\layernormbackward.h" />
+    <ClInclude Include="..\src\inferno\gradfn\maskedfillbackward.h" />
     <ClInclude Include="..\src\inferno\gradfn\mmbackward.h" />
     <ClInclude Include="..\src\inferno\gradfn\mselossbackward.h" />
     <ClInclude Include="..\src\inferno\gradfn\multiplybackward.h" />
@@ -117,6 +120,7 @@
     <ClInclude Include="..\src\inferno\gradfn\slicebackward.h" />
     <ClInclude Include="..\src\inferno\gradfn\softmaxbackward.h" />
     <ClInclude Include="..\src\inferno\gradfn\subtractbackward.h" />
+    <ClInclude Include="..\src\inferno\gradfn\sumbackward.h" />
     <ClInclude Include="..\src\inferno\gradfn\transposebackward.h" />
     <ClInclude Include="..\src\inferno\modules\embedding_kernels.h" />
     <ClInclude Include="..\src\inferno\modules\layernorm_kernels.h" />
@@ -152,6 +156,7 @@
     <CudaCompile Include="..\src\inferno\cuda\cudasigmoid.cu" />
     <CudaCompile Include="..\src\inferno\cuda\cudasoftmax.cu" />
     <CudaCompile Include="..\src\inferno\cuda\cudasubtract.cu" />
+    <CudaCompile Include="..\src\inferno\cuda\cudasum.cu" />
     <CudaCompile Include="..\src\inferno\cuda\cudasumtoshape.cu" />
     <CudaCompile Include="..\src\inferno\cuda\cudatri.cu" />
   </ItemGroup>

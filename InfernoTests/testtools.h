@@ -12,8 +12,8 @@ struct TestStats {
 
 bool TensorEquals(const Inferno::Tensor& A, const Inferno::Tensor& B);
 
-template <typename AT, typename BT>
-bool are_vals_equal(AT vala, BT valb);
+//template <typename AT, typename BT>
+//bool are_vals_equal(AT vala, BT valb);
 
 void ExpectTensorEq(const std::string& name, const Inferno::Tensor& actual, const Inferno::Tensor& expected, TestStats& stats);
 void ExpectTrue(bool cond, const std::string& name, TestStats& stats);
@@ -52,7 +52,7 @@ void ExpectTensorEq(const std::string& name, const Inferno::Tensor& actual, cons
 
 
 //Returns true if they're the same
-template <typename AT, typename BT>
+/*template <typename AT, typename BT>
 bool are_vals_equal(AT vala, BT valb) {
 
     if constexpr (std::is_floating_point_v<AT> || std::is_floating_point_v<BT>)
@@ -74,9 +74,9 @@ bool are_vals_equal(AT vala, BT valb) {
     return true;
 
 
-}
+}*/
 
-/*bool TensorEquals(const Inferno::Tensor& A, const Inferno::Tensor& B) {
+bool TensorEquals(const Inferno::Tensor& A, const Inferno::Tensor& B) {
 
 
 	return dispatchTwo(A.dtype(), B.dtype(), [&](auto TA, auto TB) {
@@ -99,17 +99,20 @@ bool are_vals_equal(AT vala, BT valb) {
             return false;
 
 
-
-		auto a_dptr = GetImpl(ta)->data_as_ptr<AT>();
-		auto b_dptr = GetImpl(tb)->data_as_ptr<BT>();
+        
+		//auto a_dptr = GetImpl(ta)->data_as_ptr<AT>();
+		//auto b_dptr = GetImpl(tb)->data_as_ptr<BT>();
         for (size_t i = 0; i < ta.numel(); i++) {
-            if (!are_vals_equal(a_dptr[i], b_dptr[i]))
-                return false;
+            //if (!are_vals_equal((ta[i]), tb[i]))
+                //return false;
         }
 		return true;
 
+      
+
+        
         //check the grad tensors, use or own functions
-        std::shared_ptr<Inferno::Tensor> grada = GetImpl(ta)->grad();
+        /*std::shared_ptr<Inferno::Tensor> grada = GetImpl(ta)->grad();
         std::shared_ptr<Inferno::Tensor> gradb = GetImpl(tb)->grad();
 
         // one has grad, the other doesn't -> not equal
@@ -119,10 +122,10 @@ bool are_vals_equal(AT vala, BT valb) {
         if (grada && gradb) {
             if (!TensorEquals(*GetImpl(ta)->grad(), *GetImpl(tb)->grad()))
                 return false;
-        }
-        return true;
+        }*/
+        //return true;
 
 	});
   
-}*/ 
+}
 

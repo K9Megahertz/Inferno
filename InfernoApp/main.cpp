@@ -4,6 +4,7 @@
 #include <inferno/util/logging.h>
 #include "timer.h"
 #include "dataloader.h"
+#include <queue>
 
 Timer t1("Performance Counter");
 
@@ -21,6 +22,38 @@ bool mmstatsenabled = false;
 
 
 CoreLogger::Logger logger;
+
+class RunningAverage {
+public:
+	RunningAverage(size_t window)
+		: m_window(window), m_sum(0.0)
+	{
+	}
+
+	void add(double value) {
+		m_values.push_back(value);
+		m_sum += value;
+
+		if (m_values.size() > m_window) {
+			m_sum -= m_values.front();
+			m_values.pop_front();
+		}
+	}
+
+	double average() const {
+		if (m_values.empty()) {
+			return 0.0;
+		}
+
+		return m_sum / static_cast<double>(m_values.size());
+	}
+
+private:
+	size_t m_window;
+	double m_sum;
+	std::deque<double> m_values;
+};
+
 
 
 class PositionalEncoding : public Inferno::Module {
@@ -1282,6 +1315,69 @@ void save_checkpoint(Inferno::Module model,Inferno::OptimizerAdamW optimizer, si
 }
 
 
+Inferno::Tensor naive_attention_from_qkv(
+	Inferno::Tensor& qkv,
+	size_t num_heads,
+	bool causal
+) {
+	std::vector<size_t> s = qkv.shape();
+
+	size_t B = s[0];
+	size_t T = s[1];
+	size_t threeC = s[2];
+	size_t C = threeC / 3;
+	size_t D = C / num_heads;
+
+	Inferno::Tensor q = qkv.slice(2, 0, C - 1).contiguous();
+	Inferno::Tensor k = qkv.slice(2, C, 2 * C - 1).contiguous();
+	Inferno::Tensor v = qkv.slice(2, 2 * C, 3 * C - 1).contiguous();
+
+	q = q.reshape({ B, T, num_heads, D }).transpose(1, 2).contiguous();
+	k = k.reshape({ B, T, num_heads, D }).transpose(1, 2).contiguous();
+	v = v.reshape({ B, T, num_heads, D }).transpose(1, 2).contiguous();
+
+	Inferno::Tensor kt = k.transpose(-1, -2).contiguous();
+
+	Inferno::Tensor scores = matmul(q, kt, "naive_qk");
+
+	float scale = 1.0f / std::sqrt(static_cast<float>(D));
+	scores = scores * scale;
+
+	if (causal) {
+		std::vector<float> mask_data;
+
+		for (size_t b = 0; b < B; b++) {
+			for (size_t h = 0; h < num_heads; h++) {
+				for (size_t i = 0; i < T; i++) {
+					for (size_t j = 0; j < T; j++) {
+						mask_data.push_back(j > i ? 1.0f : 0.0f);
+					}
+				}
+			}
+		}
+
+		Inferno::Tensor mask(
+			Inferno::DType::Int32,
+			mask_data,
+			{ B, num_heads, T, T },
+			"mask",
+			qkv.device(),
+			false
+		);
+
+		scores = masked_fill(scores, mask, -1.0e9f);
+	}
+
+	Inferno::Tensor attn = Inferno::Softmax(scores, -1).contiguous();
+
+	Inferno::Tensor y = matmul(attn, v, "naive_attn_v");
+
+	y = y.transpose(1, 2).contiguous();
+	y = y.reshape({ B, T, C });
+
+	return y;
+}
+
 
 int main(int argc, char* argv[]) {
 
@@ -1299,34 +1395,170 @@ int main(int argc, char* argv[]) {
 	}
 
 
+	/*{
+		
+
+		const size_t B = 1;
+		const size_t T = 3;
+		const size_t H = 1;
+		const size_t D = 64;
+		const size_t C = H * D;*/
+
+		//std::vector<float> qkv_data;
+		//qkv_data.reserve(B * T * 3 * C);
+
+		/*for (size_t i = 0; i < B * T * 3 * C; i++) {
+			float v = std::sin(float(i) * 0.1f) * 0.5f;
+			qkv_data.push_back(v);
+		}
+
+		std::vector<float> w_data;
+		w_data.reserve(B * T * C);
+
+		for (size_t i = 0; i < B * T * C; i++) {
+			float v = std::cos(float(i) * 0.07f) * 0.3f;
+			w_data.push_back(v);
+		}*/
+
+		/*std::vector<float> qkv_data(B * T * 3 * C, 0.0f);
+		std::vector<float> w_data(B * T * C, 0.0f);
+
+		auto Q = [&](size_t t, size_t d) -> float& {
+			return qkv_data[t * 3 * C + d];
+		};
+
+		auto K = [&](size_t t, size_t d) -> float& {
+			return qkv_data[t * 3 * C + C + d];
+		};
+
+		auto V = [&](size_t t, size_t d) -> float& {
+			return qkv_data[t * 3 * C + 2 * C + d];
+		};
+
+		auto dO = [&](size_t t, size_t d) -> float& {
+			return w_data[t * C + d];
+		};
+
+		// token 0
+		Q(0, 0) = 1.0f; Q(0, 1) = 0.0f;
+		K(0, 0) = 1.0f; K(0, 1) = 0.0f;
+		V(0, 0) = 10.0f; V(0, 1) = 20.0f;
+
+		// token 1
+		Q(1, 0) = 0.0f; Q(1, 1) = 1.0f;
+		K(1, 0) = 0.0f; K(1, 1) = 1.0f;
+		V(1, 0) = 30.0f; V(1, 1) = 40.0f;
+
+		// token 2
+		Q(2, 0) = 1.0f; Q(2, 1) = 1.0f;
+		K(2, 0) = 1.0f; K(2, 1) = 1.0f;
+		V(2, 0) = 50.0f; V(2, 1) = 60.0f;
+
+		// upstream grad only for first two output dims
+		dO(0, 0) = 1.0f; dO(0, 1) = 1.0f;
+		dO(1, 0) = 1.0f; dO(1, 1) = 1.0f;
+		dO(2, 0) = 1.0f; dO(2, 1) = 1.0f;
+
+		
+		Inferno::Tensor qkv_flash(
+			Inferno::DType::Float32,
+			qkv_data,
+			{ B, T, 3 * C },
+			"qkv_flash",
+			device,
+			true
+		);
+
+		Inferno::Tensor qkv_naive(
+			Inferno::DType::Float32,
+			qkv_data,
+			{ B, T, 3 * C },
+			"qkv_naive",
+			device,
+			true
+		);
+
+		Inferno::Tensor w(
+			Inferno::DType::Float32,
+			w_data,
+			{ B, T, C },
+			"w",
+			device,
+			false
+		);
+
+
+		/*Inferno::Tensor x(Inferno::DType::Float32, { 1,2,3,4,5,6 }, { 2,3 }, "x", device, true);
+
+		Inferno::Tensor mask(Inferno::DType::Int32, { 0,1,0,1,0,1 }, { 2,3 }, "mask", device, false);
+
+		Inferno::Tensor y = masked_fill(x, mask, -1000.0f);
+
+		Inferno::Tensor loss = y.sum();
+
+		loss.backward();
+
+		std::cout << *x.grad() << std::endl;*/
 
 
 
 
-	
-	
+
+
+		/*Inferno::Tensor y_flash = Inferno::flash_attention_bigdaddy_forward(qkv_flash, H, true);
+
+		Inferno::Tensor y_naive = naive_attention_from_qkv(qkv_naive, H, true);
+
+		std::cout << "================ y_flash ================\n";
+		std::cout << y_flash << std::endl;
+
+		std::cout << "================ y_naive ================\n";
+		std::cout << y_naive << std::endl;
+
+		Inferno::Tensor loss_flash = (y_flash * w).sum();
+		Inferno::Tensor loss_naive = (y_naive * w).sum();
+
+		loss_flash.backward();
+		loss_naive.backward();
+
+		std::cout << "================ qkv_flash.grad ================\n";
+		std::cout << *qkv_flash.grad() << std::endl;
+
+		std::cout << "================ qkv_naive.grad ================\n";
+		std::cout << *qkv_naive.grad() << std::endl;
+	}
+
+
+
+
+
+	exit(1);*/
+
+
+
+
 	logger.Start("logs/inferno.txt");
 
 	Inferno::Logger::SetLogger(&logger);
 	Inferno::Logger::EnableLogging();
 
-	logger.SetLevel(CoreLogger::Logger::LogLevel::LOGLEVEL_INFO);	
+	logger.SetLevel(CoreLogger::Logger::LogLevel::LOGLEVEL_INFO);
 	//logger.SetLevel(CoreLogger::Logger::LogLevel::LOGLEVEL_DEBUG);
-	
-	
+
+
 
 	//Inferno::Logger::SetLevel(Inferno::Logger::LogLevel::LOGLEVEL_ERROR);
 	//Inferno::Logger::SetLevel(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG);
 	//Inferno::Logger::SetLevel(Inferno::Logger::LogLevel::LOGLEVEL_INFO);	
 	//Inferno::Logger::EnableLogging();
-	
+
 
 	//Inferno::EnableLogging("test.txt");	
 
 	Inferno::RandomGenerator::initializeWithSeed(42);
 
-	
-	
+
+
 	//RunTests();
 
 //	Inferno::Tensor a(Inferno::DType::Float32, { -0.607237f, 0.448901f, 0.110358f, -0.072336f, -0.554881f, 0.489027f, 0.025490f, -0.068161f, -0.490913f, 0.548747f, -0.155777f, 0.127474f, -0.411033f, 0.337617f, 0.063233f, -0.092226f }, {2, 2, 4 }, "a", device, true);
@@ -1345,12 +1577,12 @@ int main(int argc, char* argv[]) {
 
 
 
-	
-	
 
-	
-	
-	
+
+
+
+
+
 
 
 	///////////////////////////////////////////////////
@@ -1361,10 +1593,10 @@ int main(int argc, char* argv[]) {
 
 
 	//Quick test
-	//size_t vocabulary_size = 2;
+	//size_t vocabulary_size = 6;
 	//size_t context_size = 2;
 	//size_t embedding_dim = 4;
-	//size_t numheads = 1;
+	//size_t numheads = 2;
 	//size_t numblocks = 1;
 
 
@@ -1377,7 +1609,7 @@ int main(int argc, char* argv[]) {
 
 
 	//GPT 2
-	size_t vocabulary_size = 60000;
+	size_t vocabulary_size = 60259;
 	size_t context_size = 1024;
 	size_t embedding_dim = 768;
 	size_t numheads = 12;
@@ -1388,12 +1620,12 @@ int main(int argc, char* argv[]) {
 	size_t steps_per_chunk = 8192;
 
 	InfernoTokenizer::BPETokenizer tok;
-	tok.Initialize({ "data\\openwebtextmerges.txt", "data\\openwebtextvocab.txt" });
+	tok.Initialize({ "data\\openwebtext_merges2.txt", "data\\openwebtext_vocab2.txt" });
 
 
-	DataLoader loader("data\\openwebtext_clean.tokens", batch_size, context_size, steps_per_chunk);
+	DataLoader loader("data\\openwebtext_clean3.tokens", batch_size, context_size, steps_per_chunk);
 
-	 
+
 	
 
 
@@ -1412,7 +1644,7 @@ int main(int argc, char* argv[]) {
 	//Inferno::Tensor input = Inferno::Tensor(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(layers[0],-0.5f,0.5f), { layers[0] }, "input", device);
 	//Inferno::Tensor target = Inferno::Tensor(Inferno::DType::Float32, { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, { 10 }, "target", device);
 
-	int checkpoint_interval = 10000;
+	int checkpoint_interval = 1000;
 	int total_steps = 1000000;
 	int step = 0;
 	float lowestloss = 99;
@@ -1421,7 +1653,8 @@ int main(int argc, char* argv[]) {
 	//Inferno::Tensor input = Inferno::Tensor(Inferno::DType::Int32, { 0,1,1,0 }, { 2, 2 }, "input", device, true);
 	//Inferno::Tensor target = Inferno::Tensor(Inferno::DType::Int32, { 1,0,0,1 }, { 2, 2 }, "target", device, true);
 
-	
+	RunningAverage avg(500);
+
 	
 	GPTModel model(vocabulary_size, context_size, embedding_dim, numheads, numblocks);
 
@@ -1470,7 +1703,7 @@ int main(int argc, char* argv[]) {
 
 		model.load_state_dict(ckpt->model);
 	}
-
+	
 	model.to(device);
 
 	auto params = model.parameters();
@@ -1484,13 +1717,13 @@ int main(int argc, char* argv[]) {
 
 
 	Inferno::CrossEntropyLoss loss_fn;
-	std::pair<Inferno::Tensor, Inferno::Tensor> pair = loader.next_batch();
+	//std::pair<Inferno::Tensor, Inferno::Tensor> pair = loader.next_batch();
 	
 	for (; step < total_steps; step++) {
 
 		t1.start();			
 
-		//std::pair<Inferno::Tensor, Inferno::Tensor> pair = loader.next_batch();
+		std::pair<Inferno::Tensor, Inferno::Tensor> pair = loader.next_batch();
 
 		Inferno::Tensor x = pair.first;
 		Inferno::Tensor y = pair.second;
@@ -1502,20 +1735,20 @@ int main(int argc, char* argv[]) {
 		std::string sy = tok.decode(blahy);
 
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << "**************************** Tensor X ****************************" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sx << std::endl;
+		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sx.substr(0,32) << std::endl;
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;	
 
 
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << "**************************** Tensor Y ****************************" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sy << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << "********************** Chars per token" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << (float)sx.size() / (float)x[0].numel() << std::endl;
+		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sy.substr(0, 32) << std::endl;
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;*/
+
+		//logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << "********************** Chars per token" << std::endl;
+		//logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << (float)sx.size() / (float)x[0].numel() << std::endl;
+		//logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
+		//logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
 
 		x = x.to(device);
 		y = y.to(device);
@@ -1571,18 +1804,21 @@ int main(int argc, char* argv[]) {
 		if (lossp.item<float>() < lowestloss)
 			lowestloss = lossp.item<float>();
 
+		avg.add(lossp.item<float>());
 
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO)
-			<< std::fixed	
+			<< std::fixed
 			<< "Iter: " << step
-			<< " Percent complete: " 
+			<< " | Percent complete: "
 			<< std::setw(7) << std::setfill(' ') << std::setprecision(3) << static_cast<float>(step) / static_cast<float>(total_steps) * 100.0f
-			<< "%  total took: "
+			<< "% | total took: "
 			<< std::setw(7) << std::setfill('0') << std::setprecision(3) << t1.elapsed_ms()
-			<< " ms  Loss: "
-			<< std::setw(13) << std::setfill('0') << std::setprecision(9) << lossp.item<float>()
-			<< " Lowest: "
-			<< std::setw(13) << std::setfill('0') << std::setprecision(9) << lowestloss
+			<< " ms | Loss: "
+			<< std::setw(9) << std::setfill('0') << std::setprecision(5) << lossp.item<float>()
+			<< " | Lowest: "
+			<< std::setw(9) << std::setfill('0') << std::setprecision(5) << lowestloss
+			<< " | Average: "
+			<< std::setw(9) << std::setfill('0') << std::setprecision(5) << avg.average()
 			<< std::endl;
 
 

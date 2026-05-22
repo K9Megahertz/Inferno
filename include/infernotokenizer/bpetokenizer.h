@@ -30,6 +30,9 @@ namespace InfernoTokenizer {
         std::string decode(const std::vector<int>& tokens);
         
 
+        bool find_special_at(const std::string& text, size_t pos, std::string& matched_special, uint32_t& special_id) const;
+        void encode_normal_text(const std::string& text, std::vector<uint32_t>& ret);
+
         void load_merges(const std::string& filename);
         void load_vocab(const std::string& file);
 
@@ -38,6 +41,8 @@ namespace InfernoTokenizer {
         Tokenizer::PreTokenizer tok;
         std::unordered_map<uint64_t, MergeEntry> m_mergemap;
         std::vector<std::string> m_vocablist;
+        std::unordered_map<std::string, uint32_t> m_special_tokens;
+        std::unordered_map<uint32_t, std::string> m_id_to_special;
     };
 
 }

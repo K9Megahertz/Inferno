@@ -37,7 +37,10 @@ namespace Inferno {
 				exit(1);
 			}
 
-			Inferno::Tensor out(dtype_of_v<RT>, A.shape(), "softmax", A.device(), true);
+			bool req_grad = Inferno::grad_enabled && A.requires_grad();
+
+			Inferno::Tensor out(dtype_of_v<RT>, A.shape(), "softmax", A.device(), req_grad);
+			
 
 			//get pointers to data
 			auto aptr = GetImpl(A)->data_as_ptr<AT>();			

@@ -746,4 +746,10 @@ namespace Inferno {
 		out[0] = total_loss / static_cast<LT>(rows);
 	}
 
+	template <typename AT>
+	void cpu_sum(const AT* aptr, AT* optr, size_t N) {
+		INFERNO_LOG_ERROR() << "cpu sum not implemented yet" << std::endl;
+		exit(1);
+	}
+
 }

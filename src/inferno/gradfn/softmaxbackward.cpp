@@ -44,7 +44,7 @@ namespace Inferno {
 			using RT = promote_t<AT, GT>;
 
 
-
+			
 
 			Inferno::Tensor out(dtype_of_v<RT>, m_A.shape(), "SoftmaxBackward", m_A.device());
 

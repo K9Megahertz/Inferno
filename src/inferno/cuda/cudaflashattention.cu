@@ -1,4 +1,4 @@
-#include "cudaops.h"
+﻿#include "cudaops.h"
 
 #include <cuda_runtime.h>
 #include <cmath>
@@ -6,6 +6,33 @@
 #include <type_traits>
 
 namespace Inferno {
+
+	template<typename T>
+	__device__ inline T flash_exp(T x);
+
+	template<>
+	__device__ inline float flash_exp<float>(float x) {
+		return expf(x);
+	}
+
+	template<>
+	__device__ inline double flash_exp<double>(double x) {
+		return exp(x);
+	}
+
+	template<typename T>
+	__device__ inline T flash_sqrt(T x);
+
+	template<>
+	__device__ inline float flash_sqrt<float>(float x) {
+		return sqrtf(x);
+	}
+
+	template<>
+	__device__ inline double flash_sqrt<double>(double x) {
+		return sqrt(x);
+	}
+
 
 	template<typename A>
 	__device__ inline A warp_sum(A v) {
@@ -2270,17 +2297,17 @@ namespace Inferno {
 
 
 	template<typename T, int BLOCK_M, int TILE_N, int DMAX>
-	__global__ void flash_backward_fused_kernel(
-		const T* __restrict__ qkv,
-		const T* __restrict__ dout,
-		T* __restrict__ dqkv,
-		size_t B,
-		size_t Tseq,
-		size_t C,
-		size_t H,
-		size_t D,
-		bool causal
-	) {
+		__global__ void flash_backward_fused_kernel(
+			const T* __restrict__ qkv,
+			const T* __restrict__ dout,
+			T* __restrict__ dqkv,
+			size_t B,
+			size_t Tseq,
+			size_t C,
+			size_t H,
+			size_t D,
+			bool causal
+		) {
 		constexpr int WARPS = BLOCK_M;
 		constexpr int THREADS = WARPS * 32;
 
@@ -2314,6 +2341,7 @@ namespace Inferno {
 		T do_reg[2];
 		T dq_reg[2] = { (T)0, (T)0 };
 
+		// Load Q[t] and dO[t].
 		for (int i = 0; i < 2; i++) {
 			int d = lane + i * 32;
 
@@ -2330,6 +2358,15 @@ namespace Inferno {
 			q_reg[i] = qkv[q_index];
 			do_reg[i] = dout[do_index];
 		}
+
+		// =====================================================================
+		// Pass 1: recompute row softmax normalizer:
+		//
+		//   row_m = max_j score_j
+		//   row_l = sum_j exp(score_j - row_m)
+		//
+		// where score_j = dot(Q_t, K_j) / sqrt(D)
+		// =====================================================================
 
 		float row_m = -INFINITY;
 		float row_l = 0.0f;
@@ -2374,6 +2411,7 @@ namespace Inferno {
 				for (int offset = 16; offset > 0; offset >>= 1) {
 					score += __shfl_down_sync(0xffffffff, score, offset);
 				}
+				score = __shfl_sync(0xffffffff, score, 0);
 
 				score *= scale;
 
@@ -2386,6 +2424,16 @@ namespace Inferno {
 
 			__syncthreads();
 		}
+
+		// =====================================================================
+		// Pass 2: compute full delta for this row:
+		//
+		//   dp_j    = dot(dO_t, V_j)
+		//   p_j     = softmax(score_j)
+		//   delta   = sum_j p_j * dp_j
+		//
+		// This must be complete before computing dS_j.
+		// =====================================================================
 
 		float delta = 0.0f;
 
@@ -2411,15 +2459,10 @@ namespace Inferno {
 
 					shK[kj][d] = qkv[k_index];
 					shV[kj][d] = qkv[v_index];
-
-					shDK[kj][d] = (T)0;
-					shDV[kj][d] = (T)0;
 				}
 				else {
 					shK[kj][d] = (T)0;
 					shV[kj][d] = (T)0;
-					shDK[kj][d] = (T)0;
-					shDV[kj][d] = (T)0;
 				}
 			}
 
@@ -2447,23 +2490,101 @@ namespace Inferno {
 					dp += __shfl_down_sync(0xffffffff, dp, offset);
 				}
 
+				score = __shfl_sync(0xffffffff, score, 0);
+				dp = __shfl_sync(0xffffffff, dp, 0);
+
 				score *= scale;
 
 				float p = __expf(score - row_m) / row_l;
 
 				delta += p * dp;
+			}
+
+			__syncthreads();
+		}
+
+		// =====================================================================
+		// Pass 3: compute dQ, dK, dV using full delta:
+		//
+		//   dP_j = dot(dO_t, V_j)
+		//   dS_j = p_j * (dP_j - delta) * scale
+		//
+		//   dQ_t += dS_j * K_j
+		//   dK_j += dS_j * Q_t
+		//   dV_j += p_j  * dO_t
+		//
+		// scale belongs in dS because S = QK^T * scale.
+		// =====================================================================
+
+		for (size_t k_start = 0; k_start < Tseq; k_start += TILE_N) {
+			for (int idx = tid; idx < TILE_N * DMAX; idx += THREADS) {
+				int kj = idx / DMAX;
+				int d = idx % DMAX;
+
+				size_t j = k_start + kj;
+
+				if (j < Tseq) {
+					size_t k_index =
+						b * Tseq * 3 * C +
+						j * 3 * C +
+						C +
+						h * D + d;
+
+					size_t v_index =
+						b * Tseq * 3 * C +
+						j * 3 * C +
+						2 * C +
+						h * D + d;
+
+					shK[kj][d] = qkv[k_index];
+					shV[kj][d] = qkv[v_index];
+				}
+				else {
+					shK[kj][d] = (T)0;
+					shV[kj][d] = (T)0;
+				}
+
+				shDK[kj][d] = (T)0;
+				shDV[kj][d] = (T)0;
+			}
+
+			__syncthreads();
+
+			for (int kj = 0; kj < TILE_N; kj++) {
+				size_t j = k_start + kj;
+
+				if (j >= Tseq) break;
+				if (causal && j > t) continue;
+
+				float score = 0.0f;
+				float dp = 0.0f;
+
+				for (int i = 0; i < 2; i++) {
+					int d = lane + i * 32;
+
+					score += (float)q_reg[i] * (float)shK[kj][d];
+					dp += (float)do_reg[i] * (float)shV[kj][d];
+				}
+
+#pragma unroll
+				for (int offset = 16; offset > 0; offset >>= 1) {
+					score += __shfl_down_sync(0xffffffff, score, offset);
+					dp += __shfl_down_sync(0xffffffff, dp, offset);
+				}
+
+				score = __shfl_sync(0xffffffff, score, 0);
+				dp = __shfl_sync(0xffffffff, dp, 0);
+
+				score *= scale;
+
+				float p = __expf(score - row_m) / row_l;
 
 				float dS = p * (dp - delta) * scale;
 
 				for (int i = 0; i < 2; i++) {
 					int d = lane + i * 32;
 
-					float val = (float)dq_reg[i] + dS * (float)shK[kj][d];
-					dq_reg[i] = (T)val;
-				}
-
-				for (int i = 0; i < 2; i++) {
-					int d = lane + i * 32;
+					dq_reg[i] = (T)((float)dq_reg[i] + dS * (float)shK[kj][d]);
 
 					atomicAdd(&shDK[kj][d], (T)(dS * (float)q_reg[i]));
 					atomicAdd(&shDV[kj][d], (T)(p * (float)do_reg[i]));
@@ -2499,6 +2620,7 @@ namespace Inferno {
 			__syncthreads();
 		}
 
+		// Store dQ for this query row.
 		for (int i = 0; i < 2; i++) {
 			int d = lane + i * 32;
 
@@ -2508,6 +2630,565 @@ namespace Inferno {
 				h * D + d;
 
 			dqkv[dq_index] = dq_reg[i];
+		}
+	}
+
+	// flash_backward_fused_kernel.cu
+//
+// Memory-efficient FlashAttention backward pass.
+//
+// Computes dQ, dK, dV from packed QKV and dOut without materialising the full
+// [Tseq x Tseq] attention matrix.
+//
+// Grid:  (ceil(Tseq/BLOCK_M),  B*H)
+// Block: (BLOCK_M * 32)  threads   (one warp per query row)
+//
+// Template parameters
+//   T       – element type (float, __half, __bfloat16)
+//   BLOCK_M – number of query rows handled per block (= warps per block)
+//   TILE_N  – number of KV rows loaded into shared memory per tile
+//   DMAX    – head dimension; must be 64
+//
+// Tensor layout  qkv / dqkv : [B, Tseq, 3, H, D]  (Q, K, V packed)
+//                dout        : [B, Tseq,    H, D]
+
+#include <cuda_fp16.h>
+#include <cuda_runtime.h>
+
+	template<typename T, int BLOCK_M, int TILE_N, int DMAX>
+	__global__ void flash_backward_fused_kernel2(
+		const T* __restrict__ qkv,
+		const T* __restrict__ dout,
+		T* __restrict__       dqkv,
+		size_t B,
+		size_t Tseq,
+		size_t C,       // H * D
+		size_t H,
+		size_t D,
+		bool   causal
+	) {
+		// -------------------------------------------------------------------------
+		// Compile-time checks
+		// -------------------------------------------------------------------------
+		constexpr int WARPS = BLOCK_M;
+		constexpr int THREADS = WARPS * 32;
+		static_assert(DMAX == 64, "DMAX must be 64");
+
+		// -------------------------------------------------------------------------
+		// Shared memory
+		//
+		// All accumulators are float so atomicAdd is always valid regardless of T.
+		// -------------------------------------------------------------------------
+		__shared__ float shK[TILE_N][DMAX];   // current K tile
+		__shared__ float shV[TILE_N][DMAX];   // current V tile
+		__shared__ float shDK[TILE_N][DMAX];   // dK accumulator (zeroed per tile)
+		__shared__ float shDV[TILE_N][DMAX];   // dV accumulator (zeroed per tile)
+
+		// -------------------------------------------------------------------------
+		// Thread / warp / block identity
+		// -------------------------------------------------------------------------
+		int tid = threadIdx.x;
+		int warp = tid / 32;
+		int lane = tid % 32;
+
+		size_t q_start = (size_t)blockIdx.x * BLOCK_M;
+		size_t bh = blockIdx.y;
+		size_t b = bh / H;
+		size_t h = bh % H;
+		size_t t = q_start + warp;
+
+		// FIX 1: never return early – every thread must reach every __syncthreads().
+		// Use a boolean flag to guard computation for out-of-bounds warps instead.
+		bool active = (warp < BLOCK_M) && (t < Tseq);
+
+		// scale = 1 / sqrt(D), applied to the QK dot product.
+		float scale = rsqrtf((float)D);
+
+		// -------------------------------------------------------------------------
+		// Per-warp registers (only meaningful when active)
+		// -------------------------------------------------------------------------
+		float q_reg[2] = { 0.f, 0.f };   // Q[t]
+		float do_reg[2] = { 0.f, 0.f };   // dO[t]
+		float dq_reg[2] = { 0.f, 0.f };   // accumulator for dQ[t]
+
+		if (active) {
+			for (int i = 0; i < 2; i++) {
+				int    d = lane + i * 32;
+				size_t q_index = b * Tseq * 3 * C + t * 3 * C + h * D + d;
+				size_t do_index = b * Tseq * C + t * C + h * D + d;
+				q_reg[i] = (float)qkv[q_index];
+				do_reg[i] = (float)dout[do_index];
+			}
+		}
+
+		// =========================================================================
+		// Pass 1 – Recompute per-row online-softmax statistics
+		//
+		//   row_m = max_j  score_j               (running maximum)
+		//   row_l = sum_j  exp(score_j - row_m)  (running normaliser)
+		//
+		// where  score_j = dot(Q_t, K_j) * scale
+		//
+		// Uses the numerically-stable online algorithm (Milakov & Gimelshein 2018):
+		// when a new maximum is found the running sum is rescaled by
+		//   exp(old_m - new_m)
+		// so that all terms share the same subtracted maximum.
+		// =========================================================================
+		float row_m = -INFINITY;
+		float row_l = 0.f;
+
+		for (size_t k_start = 0; k_start < Tseq; k_start += TILE_N) {
+
+			// Cooperative load of K tile – all threads participate so that
+			// __syncthreads() is always reached with the correct number of writers.
+			for (int idx = tid; idx < TILE_N * DMAX; idx += THREADS) {
+				int    kj = idx / DMAX;
+				int    d = idx % DMAX;
+				size_t j = k_start + kj;
+				if (j < Tseq) {
+					size_t k_index = b * Tseq * 3 * C + j * 3 * C + C + h * D + d;
+					shK[kj][d] = (float)qkv[k_index];
+				}
+				else {
+					shK[kj][d] = 0.f;
+				}
+			}
+			__syncthreads();   // barrier 1: tile fully loaded
+
+			if (active) {
+				for (int kj = 0; kj < TILE_N; kj++) {
+					size_t j = k_start + kj;
+					if (j >= Tseq)       break;
+					if (causal && j > t) continue;
+
+					// Warp-parallel dot product Q_t · K_j
+					float score = 0.f;
+					for (int i = 0; i < 2; i++) {
+						int d = lane + i * 32;
+						score += q_reg[i] * shK[kj][d];
+					}
+#pragma unroll
+					for (int off = 16; off > 0; off >>= 1)
+						score += __shfl_down_sync(0xffffffff, score, off);
+					score = __shfl_sync(0xffffffff, score, 0);  // broadcast to all lanes
+					score *= scale;
+
+					// Online softmax update
+					float old_m = row_m;
+					row_m = fmaxf(row_m, score);
+					row_l = row_l * __expf(old_m - row_m) + __expf(score - row_m);
+				}
+			}
+			__syncthreads();   // barrier 2: safe to overwrite shK next iteration
+		}
+
+		// =========================================================================
+		// Pass 2 – Compute per-row delta
+		//
+		//   dP_ij = dot(dO_t, V_j)
+		//   P_ij  = exp(score_ij - row_m) / row_l
+		//   delta = sum_j  P_ij * dP_ij
+		//
+		// delta must be fully accumulated over ALL j before Pass 3 begins because
+		// every dS_ij depends on it.
+		// =========================================================================
+		float delta = 0.f;
+
+		for (size_t k_start = 0; k_start < Tseq; k_start += TILE_N) {
+
+			// Load K and V tiles cooperatively
+			for (int idx = tid; idx < TILE_N * DMAX; idx += THREADS) {
+				int    kj = idx / DMAX;
+				int    d = idx % DMAX;
+				size_t j = k_start + kj;
+				if (j < Tseq) {
+					size_t k_index = b * Tseq * 3 * C + j * 3 * C + C + h * D + d;
+					size_t v_index = b * Tseq * 3 * C + j * 3 * C + 2 * C + h * D + d;
+					shK[kj][d] = (float)qkv[k_index];
+					shV[kj][d] = (float)qkv[v_index];
+				}
+				else {
+					shK[kj][d] = 0.f;
+					shV[kj][d] = 0.f;
+				}
+			}
+			__syncthreads();
+
+			if (active) {
+				for (int kj = 0; kj < TILE_N; kj++) {
+					size_t j = k_start + kj;
+					if (j >= Tseq)       break;
+					if (causal && j > t) continue;
+
+					float score = 0.f, dp = 0.f;
+					for (int i = 0; i < 2; i++) {
+						int d = lane + i * 32;
+						score += q_reg[i] * shK[kj][d];
+						dp += do_reg[i] * shV[kj][d];
+					}
+#pragma unroll
+					for (int off = 16; off > 0; off >>= 1) {
+						score += __shfl_down_sync(0xffffffff, score, off);
+						dp += __shfl_down_sync(0xffffffff, dp, off);
+					}
+					score = __shfl_sync(0xffffffff, score, 0);
+					dp = __shfl_sync(0xffffffff, dp, 0);
+					score *= scale;
+
+					// FIX 3: guard against fully-masked rows (row_l == 0 → NaN)
+					float p = (row_l > 0.f) ? __expf(score - row_m) / row_l : 0.f;
+					delta += p * dp;
+				}
+			}
+			__syncthreads();
+		}
+
+		// =========================================================================
+		// Pass 3 – Accumulate dQ, dK, dV
+		//
+		// For each (t, j) pair:
+		//
+		//   dP_ij = dot(dO_t, V_j)
+		//   dS_ij = P_ij * (dP_ij - delta_t)
+		//
+		// Gradient through  S = QK^T * scale  (scale applied to the dot product):
+		//
+		//   dQ_t  += dS_ij * scale * K_j       ← scale here, NOT inside dS
+		//   dK_j  += dS_ij * scale * Q_t       ← scale here, NOT inside dS
+		//   dV_j  += P_ij  * dO_t              ← no scale factor
+		//
+		// FIX 4: scale appears in the Q/K updates, not baked into dS.
+		//        The original code had  dS = p*(dp-delta)*scale  which was correct
+		//        in magnitude but conceptually wrong; the refactored version is
+		//        cleaner and easier to verify against the math.
+		//
+		// Atomics strategy:
+		//   dQ: accumulate in register dq_reg (one warp owns row t exclusively)
+		//   dK/dV: atomicAdd into shared memory first, then flush to global.
+		//          Multiple warps within the block write to the same K/V row j,
+		//          so intra-block atomics into shared are required.  Only one
+		//          thread-group then atomicAdds the tile result into global memory.
+		// =========================================================================
+		for (size_t k_start = 0; k_start < Tseq; k_start += TILE_N) {
+
+			// Load K, V; zero dK, dV accumulators.
+			// Zeroing is done in the same loop to guarantee every element is
+			// initialised before any warp writes to shDK/shDV.
+			for (int idx = tid; idx < TILE_N * DMAX; idx += THREADS) {
+				int    kj = idx / DMAX;
+				int    d = idx % DMAX;
+				size_t j = k_start + kj;
+				if (j < Tseq) {
+					size_t k_index = b * Tseq * 3 * C + j * 3 * C + C + h * D + d;
+					size_t v_index = b * Tseq * 3 * C + j * 3 * C + 2 * C + h * D + d;
+					shK[kj][d] = (float)qkv[k_index];
+					shV[kj][d] = (float)qkv[v_index];
+				}
+				else {
+					shK[kj][d] = 0.f;
+					shV[kj][d] = 0.f;
+				}
+				// FIX 3 (part 2): zero accumulators unconditionally for every
+				// element, including out-of-bounds slots, so stale values from a
+				// previous iteration can never contaminate the flush to global mem.
+				shDK[kj][d] = 0.f;
+				shDV[kj][d] = 0.f;
+			}
+			__syncthreads();   // barrier: tile + zero complete before any compute
+
+			if (active) {
+				for (int kj = 0; kj < TILE_N; kj++) {
+					size_t j = k_start + kj;
+					if (j >= Tseq)       break;
+					if (causal && j > t) continue;
+
+					float score = 0.f, dp = 0.f;
+					for (int i = 0; i < 2; i++) {
+						int d = lane + i * 32;
+						score += q_reg[i] * shK[kj][d];
+						dp += do_reg[i] * shV[kj][d];
+					}
+#pragma unroll
+					for (int off = 16; off > 0; off >>= 1) {
+						score += __shfl_down_sync(0xffffffff, score, off);
+						dp += __shfl_down_sync(0xffffffff, dp, off);
+					}
+					score = __shfl_sync(0xffffffff, score, 0);
+					dp = __shfl_sync(0xffffffff, dp, 0);
+					score *= scale;
+
+					float p = (row_l > 0.f) ? __expf(score - row_m) / row_l : 0.f;
+					float dS = p * (dp - delta);      // softmax-corrected gradient
+
+					for (int i = 0; i < 2; i++) {
+						int d = lane + i * 32;
+						// FIX 4: scale applied in the update equations, not in dS
+						dq_reg[i] += dS * scale * shK[kj][d];
+						atomicAdd(&shDK[kj][d], dS * scale * q_reg[i]);
+						atomicAdd(&shDV[kj][d], p * do_reg[i]);
+					}
+				}
+			}
+			__syncthreads();   // barrier: all atomics into shDK/shDV are complete
+
+			// Flush tile dK, dV accumulators to global memory.
+			// All threads cooperate so no warp sits idle during the writeback.
+			for (int idx = tid; idx < TILE_N * DMAX; idx += THREADS) {
+				int    kj = idx / DMAX;
+				int    d = idx % DMAX;
+				size_t j = k_start + kj;
+				if (j < Tseq) {
+					size_t dk_index = b * Tseq * 3 * C + j * 3 * C + C + h * D + d;
+					size_t dv_index = b * Tseq * 3 * C + j * 3 * C + 2 * C + h * D + d;
+					// atomicAdd because different blocks (different query-row tiles)
+					// all write into the same K/V rows.
+					atomicAdd(&dqkv[dk_index], (T)shDK[kj][d]);
+					atomicAdd(&dqkv[dv_index], (T)shDV[kj][d]);
+				}
+			}
+			__syncthreads();   // barrier before next tile overwrites shK/shV/shDK/shDV
+		}
+
+		// -------------------------------------------------------------------------
+		// Write dQ for query row t.
+		//
+		// FIX 5: plain store is correct here.  The grid partitions query rows into
+		// non-overlapping BLOCK_M-sized chunks, so exactly one block owns each row t
+		// and no other block writes to dqkv[dq_index].  No atomic needed.
+		// -------------------------------------------------------------------------
+		if (active) {
+			for (int i = 0; i < 2; i++) {
+				int    d = lane + i * 32;
+				size_t dq_index = b * Tseq * 3 * C + t * 3 * C + h * D + d;
+				dqkv[dq_index] = (T)dq_reg[i];
+			}
+		}
+	}
+
+
+	template<typename T>
+	__global__ void flash_backward_reference_kernel(
+		const T* __restrict__ qkvptr,
+		const T* __restrict__ doutptr,
+		T* __restrict__ dqkvptr,
+		size_t B,
+		size_t Tseq,
+		size_t C,
+		size_t H,
+		size_t D,
+		bool causal
+	) {
+		size_t t = blockIdx.x;
+		size_t h = blockIdx.y;
+		size_t b = blockIdx.z;
+
+		if (threadIdx.x != 0) {
+			return;
+		}
+
+		T scale = (T)1 / flash_sqrt((T)D);
+
+		// ============================================================
+		// Pass 1: row max
+		// ============================================================
+
+		T row_max = -(T)1e30;
+
+		for (size_t j = 0; j < Tseq; j++) {
+
+			if (causal && j > t) {
+				continue;
+			}
+
+			T score = (T)0;
+
+			for (size_t d = 0; d < D; d++) {
+
+				size_t q_idx =
+					b * Tseq * 3 * C +
+					t * 3 * C +
+					h * D + d;
+
+				size_t k_idx =
+					b * Tseq * 3 * C +
+					j * 3 * C +
+					C +
+					h * D + d;
+
+				score += qkvptr[q_idx] * qkvptr[k_idx];
+			}
+
+			score *= scale;
+
+			if (score > row_max) {
+				row_max = score;
+			}
+		}
+
+		// ============================================================
+		// Pass 2: softmax denominator
+		// ============================================================
+
+		T row_sum = (T)0;
+
+		for (size_t j = 0; j < Tseq; j++) {
+
+			if (causal && j > t) {
+				continue;
+			}
+
+			T score = (T)0;
+
+			for (size_t d = 0; d < D; d++) {
+
+				size_t q_idx =
+					b * Tseq * 3 * C +
+					t * 3 * C +
+					h * D + d;
+
+				size_t k_idx =
+					b * Tseq * 3 * C +
+					j * 3 * C +
+					C +
+					h * D + d;
+
+				score += qkvptr[q_idx] * qkvptr[k_idx];
+			}
+
+			score *= scale;
+
+			row_sum += flash_exp(score - row_max);
+		}
+
+		// ============================================================
+		// Pass 3: delta
+		// ============================================================
+
+		T delta = (T)0;
+
+		for (size_t j = 0; j < Tseq; j++) {
+
+			if (causal && j > t) {
+				continue;
+			}
+
+			T score = (T)0;
+			T dp = (T)0;
+
+			for (size_t d = 0; d < D; d++) {
+
+				size_t q_idx =
+					b * Tseq * 3 * C +
+					t * 3 * C +
+					h * D + d;
+
+				size_t k_idx =
+					b * Tseq * 3 * C +
+					j * 3 * C +
+					C +
+					h * D + d;
+
+				size_t v_idx =
+					b * Tseq * 3 * C +
+					j * 3 * C +
+					2 * C +
+					h * D + d;
+
+				size_t do_idx =
+					b * Tseq * C +
+					t * C +
+					h * D + d;
+
+				score += qkvptr[q_idx] * qkvptr[k_idx];
+				dp += doutptr[do_idx] * qkvptr[v_idx];
+			}
+
+			score *= scale;
+
+			T p = flash_exp(score - row_max) / row_sum;
+
+			delta += p * dp;
+		}
+
+		// ============================================================
+		// Pass 4: dQ dK dV
+		// ============================================================
+
+		for (size_t j = 0; j < Tseq; j++) {
+
+			if (causal && j > t) {
+				continue;
+			}
+
+			T score = (T)0;
+			T dp = (T)0;
+
+			for (size_t d = 0; d < D; d++) {
+
+				size_t q_idx =
+					b * Tseq * 3 * C +
+					t * 3 * C +
+					h * D + d;
+
+				size_t k_idx =
+					b * Tseq * 3 * C +
+					j * 3 * C +
+					C +
+					h * D + d;
+
+				size_t v_idx =
+					b * Tseq * 3 * C +
+					j * 3 * C +
+					2 * C +
+					h * D + d;
+
+				size_t do_idx =
+					b * Tseq * C +
+					t * C +
+					h * D + d;
+
+				score += qkvptr[q_idx] * qkvptr[k_idx];
+				dp += doutptr[do_idx] * qkvptr[v_idx];
+			}
+
+			score *= scale;
+
+			T p = flash_exp(score - row_max) / row_sum;
+
+			T dscore = p * (dp - delta);
+
+			T ddot = dscore * scale;
+
+			for (size_t d = 0; d < D; d++) {
+
+				size_t q_idx =
+					b * Tseq * 3 * C +
+					t * 3 * C +
+					h * D + d;
+
+				size_t k_idx =
+					b * Tseq * 3 * C +
+					j * 3 * C +
+					C +
+					h * D + d;
+
+				size_t v_idx =
+					b * Tseq * 3 * C +
+					j * 3 * C +
+					2 * C +
+					h * D + d;
+
+				size_t do_idx =
+					b * Tseq * C +
+					t * C +
+					h * D + d;
+
+				atomicAdd(&dqkvptr[q_idx], ddot * qkvptr[k_idx]);
+
+				atomicAdd(&dqkvptr[k_idx], ddot * qkvptr[q_idx]);
+
+				atomicAdd(&dqkvptr[v_idx], p * doutptr[do_idx]);
+			}
 		}
 	}
 
@@ -2537,14 +3218,26 @@ namespace Inferno {
 
 		size_t qkv_numel = B * Tseq * 3 * C;
 
-		cudaMemset(dqkvptr, 0, qkv_numel * sizeof(float));
+		//cudaMemset(dqkvptr, 0, qkv_numel * sizeof(float));
+		cudaMemset(dqkvptr, 0, qkv_numel * sizeof(T));
 
 		dim3 grid(
 			(unsigned int)((Tseq + BLOCK_M - 1) / BLOCK_M),
 			(unsigned int)(B * H)
 		);
 
-		flash_backward_fused_kernel<T, BLOCK_M, TILE_N, DMAX>
+
+		/*dim3 grid(
+			(unsigned int)Tseq,
+			(unsigned int)H,
+			(unsigned int)B
+		);*/
+
+		//dim3 block(1);
+
+		
+		flash_backward_fused_kernel2<T, BLOCK_M, TILE_N, DMAX>
+		//flash_backward_reference_kernel<T>
 			<< <grid, THREADS >> > (
 				qkvptr,
 				doutptr,
