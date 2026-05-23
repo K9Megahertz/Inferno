@@ -222,6 +222,9 @@
     <ClCompile Include="..\src\inferno\gradfn\maskedfillbackward.cpp">
       <Filter>Source Files\gradfn</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\inferno\util\memmappedfile.cpp">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\inferno\core\tensor.h">
@@ -412,6 +415,9 @@
     </ClInclude>
     <ClInclude Include="..\src\inferno\gradfn\maskedfillbackward.h">
       <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\inferno\util\memmappedfile.h">
+      <Filter>Header Files\util</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

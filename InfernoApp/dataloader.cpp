@@ -99,3 +99,56 @@ std::pair<Inferno::Tensor, Inferno::Tensor> DataLoader::next_batch() {
 	return { x,y };
 
 }
+
+
+
+
+
+DataLoader2::DataLoader2(const std::string& token_file, size_t batch_size, size_t context_size) :
+	m_batch_size(batch_size),
+	m_context_size(context_size),		
+	m_rng(std::random_device{}()),
+	m_file(token_file) {
+
+	
+
+
+	
+
+}
+
+
+
+
+
+std::pair<Inferno::Tensor, Inferno::Tensor> DataLoader2::next_batch() {
+
+
+	std::vector<uint32_t> xvec(m_batch_size * m_context_size, 0);
+	std::vector<uint32_t> yvec(m_batch_size * m_context_size, 0);
+
+	size_t count = m_file.count_as<int32_t>();
+	int32_t *tokens = m_file.data_as_ptr<int32_t>();
+	
+
+	std::uniform_int_distribution<size_t> dist(0, count - m_context_size - 1);
+
+	for (size_t b = 0; b < m_batch_size; b++) {
+		size_t start = dist(m_rng);
+
+		for (size_t t = 0; t < m_context_size; t++) {
+			size_t idx = b * m_context_size + t;
+
+			xvec[idx] = tokens[start + t];
+			yvec[idx] = tokens[start + t + 1];
+		}
+	}
+
+	Inferno::Tensor x(Inferno::DType::Int32, std::move(xvec), { m_batch_size, m_context_size }, "x_batch", Inferno::Device::cpu());
+	Inferno::Tensor y(Inferno::DType::Int32, std::move(yvec), { m_batch_size, m_context_size }, "y_batch", Inferno::Device::cpu());
+
+	
+
+	return { x,y };
+
+}

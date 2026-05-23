@@ -63,6 +63,7 @@
     <ClCompile Include="..\src\inferno\storage\cudastorage.cpp" />
     <ClCompile Include="..\src\inferno\util\idbroker.cpp" />
     <ClCompile Include="..\src\inferno\util\logging.cpp" />
+    <ClCompile Include="..\src\inferno\util\memmappedfile.cpp" />
     <ClCompile Include="..\src\inferno\util\nodetracker.cpp" />
     <ClCompile Include="..\src\inferno\util\random.cpp" />
     <ClCompile Include="..\src\inferno\util\timer.cpp" />
@@ -85,6 +86,7 @@
     <ClInclude Include="..\include\inferno\optim\adamw.h" />
     <ClInclude Include="..\include\inferno\optim\sgd.h" />
     <ClInclude Include="..\include\inferno\util\logging.h" />
+    <ClInclude Include="..\include\inferno\util\memmappedfile.h" />
     <ClInclude Include="..\include\inferno\util\random.h" />
     <ClInclude Include="..\src\inferno\core\broadcastops.h" />
     <ClInclude Include="..\src\inferno\core\cpuops.h" />

@@ -47,6 +47,8 @@
 // Utility
 ///////////////////////////////////
 #include <inferno/util/random.h>
+#include <inferno/util/memmappedfile.h>
+
 
  
 ///////////////////////////////////

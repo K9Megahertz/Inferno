@@ -19,6 +19,7 @@ Inferno::Device device = Inferno::Device::cuda(0);
 
 bool laptimingenabled = false;
 bool mmstatsenabled = false;
+bool printtrainingtokens = false;
 
 
 CoreLogger::Logger logger;
@@ -1623,7 +1624,8 @@ int main(int argc, char* argv[]) {
 	tok.Initialize({ "data\\openwebtext_merges2.txt", "data\\openwebtext_vocab2.txt" });
 
 
-	DataLoader loader("data\\openwebtext_clean3.tokens", batch_size, context_size, steps_per_chunk);
+	//DataLoader loader("data\\openwebtext_clean3.tokens", batch_size, context_size, steps_per_chunk);
+	DataLoader2 loader("data\\openwebtext_clean3.tokens", batch_size, context_size);
 
 
 	
@@ -1653,7 +1655,7 @@ int main(int argc, char* argv[]) {
 	//Inferno::Tensor input = Inferno::Tensor(Inferno::DType::Int32, { 0,1,1,0 }, { 2, 2 }, "input", device, true);
 	//Inferno::Tensor target = Inferno::Tensor(Inferno::DType::Int32, { 1,0,0,1 }, { 2, 2 }, "target", device, true);
 
-	RunningAverage avg(500);
+	RunningAverage avg(1000);
 
 	
 	GPTModel model(vocabulary_size, context_size, embedding_dim, numheads, numblocks);
@@ -1707,8 +1709,7 @@ int main(int argc, char* argv[]) {
 	model.to(device);
 
 	auto params = model.parameters();
-
-	//Inferno::OptimizerAdamW optimizer(params);	
+	
 	Inferno::OptimizerAdamW optimizer(model.parameters(), 1e-4f, 0.9f, 0.95f, 1e-8f, 0.0f);
 
 	if (resume) {
@@ -1728,22 +1729,25 @@ int main(int argc, char* argv[]) {
 		Inferno::Tensor x = pair.first;
 		Inferno::Tensor y = pair.second;
 
-		/*auto blahx = x[0].to_vector<int>();
-		auto blahy = y[0].to_vector<int>();
 
-		std::string sx = tok.decode(blahx);
-		std::string sy = tok.decode(blahy);
+		if (printtrainingtokens) {
+			auto blahx = x[0].to_vector<int>();
+			auto blahy = y[0].to_vector<int>();
 
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << "**************************** Tensor X ****************************" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sx.substr(0,32) << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;	
+			std::string sx = tok.decode(blahx);
+			std::string sy = tok.decode(blahy);
+
+			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << "**************************** Tensor X ****************************" << std::endl;
+			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sx.substr(0, 32) << std::endl;
+			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
+			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
 
 
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << "**************************** Tensor Y ****************************" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sy.substr(0, 32) << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;*/
+			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << "**************************** Tensor Y ****************************" << std::endl;
+			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sy.substr(0, 32) << std::endl;
+			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
+			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
+		}
 
 		//logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << "********************** Chars per token" << std::endl;
 		//logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << (float)sx.size() / (float)x[0].numel() << std::endl;
