@@ -48,6 +48,9 @@ namespace Inferno {
         {
         }
 
+        float getLR() {
+            return m_lrcurrent;
+        }
         void step();
         void zero_grad();
         void load_state_dict(const AdamWStateDict& sd);
@@ -70,6 +73,7 @@ namespace Inferno {
         float m_beta2;
         float m_eps;
         float m_weight_decay;
+        float m_lrcurrent;
 
         size_t m_step;
     };

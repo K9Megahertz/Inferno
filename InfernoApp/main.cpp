@@ -1710,12 +1710,12 @@ int main(int argc, char* argv[]) {
 
 	auto params = model.parameters();
 	
-	Inferno::OptimizerAdamW optimizer(model.parameters(), 1e-4f, 0.9f, 0.95f, 1e-8f, 0.0f);
-
+	Inferno::OptimizerAdamW optimizer(model.parameters(), 1.5e-5f, 0.9f, 0.95f, 1e-8f, 0.1f);
+	//ckpt->optimizer.lr = 3e-5f;
 	if (resume) {
 		optimizer.load_state_dict(ckpt->optimizer);
 	}	
-
+	
 
 	Inferno::CrossEntropyLoss loss_fn;
 	//std::pair<Inferno::Tensor, Inferno::Tensor> pair = loader.next_batch();
@@ -1749,10 +1749,6 @@ int main(int argc, char* argv[]) {
 			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
 		}
 
-		//logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << "********************** Chars per token" << std::endl;
-		//logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << (float)sx.size() / (float)x[0].numel() << std::endl;
-		//logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
-		//logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
 
 		x = x.to(device);
 		y = y.to(device);
@@ -1788,9 +1784,7 @@ int main(int argc, char* argv[]) {
 
 		t1.stop();
 
-
-		//std::cout << model.emb1.m_embeddings;
-
+		
 		if (laptimingenabled) {
 			std::vector<TimerLapResult> results = t1.lap_results();
 			for (TimerLapResult res : results) {
@@ -1817,7 +1811,9 @@ int main(int argc, char* argv[]) {
 			<< std::setw(7) << std::setfill(' ') << std::setprecision(3) << static_cast<float>(step) / static_cast<float>(total_steps) * 100.0f
 			<< "% | total took: "
 			<< std::setw(7) << std::setfill('0') << std::setprecision(3) << t1.elapsed_ms()
-			<< " ms | Loss: "
+			<< " ms | LR: "
+			<< std::setw(9) << std::setfill('0') << std::setprecision(8) << optimizer.getLR()
+			<< " | Loss: "
 			<< std::setw(9) << std::setfill('0') << std::setprecision(5) << lossp.item<float>()
 			<< " | Lowest: "
 			<< std::setw(9) << std::setfill('0') << std::setprecision(5) << lowestloss

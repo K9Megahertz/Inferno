@@ -6,19 +6,25 @@
 
 namespace Inferno {
 
+    constexpr double M_PI=3.14159265358979323846;
 
     void OptimizerAdamW::step() {
         NoGradGuard guard;
 
         float lr = m_lr;
-
-        int warmup_steps = 2000;  // start with this
-
+        int warmup_steps = 2000;
+        int total_steps = 1000000;
+        float min_lr = m_lr * 0.1f;  // decay to 10% of peak 
+        
         if (m_step < warmup_steps) {
             lr = m_lr * (float(m_step + 1)  / float(warmup_steps));
+        } else {
+            float progress = float(m_step - warmup_steps) / float(total_steps - warmup_steps);
+            progress = std::min(progress, 1.0f);
+            lr = min_lr + 0.5f * (m_lr - min_lr) * (1.0f + std::cos(M_PI * progress));
         }
-
-        INFERNO_LOG_DEBUG() << "Step: " << m_step << "  LR: " << lr << std::endl;
+        m_lrcurrent = lr;
+        INFERNO_LOG_DEBUG() << "Step: " << m_step << "  LR: " << std::fixed << std::setprecision(8) << lr << std::endl;        
 
         m_step++;
 
