@@ -79,6 +79,12 @@
     <Filter Include="Source Files\checkpoint">
       <UniqueIdentifier>{c0c994bd-3d1f-4ab3-b054-1f770da0c93c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\autograd">
+      <UniqueIdentifier>{a5cb4d46-4d28-4f37-af8b-7f4ac45b391b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\autograd">
+      <UniqueIdentifier>{762b4420-a19d-4040-9de4-155903ae9756}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\inferno\checkpoint\checkpoint.cpp">
@@ -224,6 +230,12 @@
     </ClCompile>
     <ClCompile Include="..\src\inferno\util\memmappedfile.cpp">
       <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\inferno\gradfn\squeezebackward.cpp">
+      <Filter>Source Files\gradfn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\inferno\autograd\gradmode.cpp">
+      <Filter>Source Files\autograd</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -418,6 +430,12 @@
     </ClInclude>
     <ClInclude Include="..\include\inferno\util\memmappedfile.h">
       <Filter>Header Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\inferno\gradfn\squeezebackward.h">
+      <Filter>Header Files\gradfn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\inferno\autograd\gradmode.h">
+      <Filter>Header Files\autograd</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

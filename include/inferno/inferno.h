@@ -5,7 +5,7 @@
 #include <inferno/core/tensor.h>
 #include <inferno/core/device.h>
 #include <inferno/core/dtype.h>
-
+#include <inferno/autograd/gradmode.h>
 
 ///////////////////////////////////
 // Modules

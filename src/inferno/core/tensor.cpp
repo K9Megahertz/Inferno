@@ -3,6 +3,7 @@
 #include "tensorimpl.h"
 #include "inferno/gradfn/transposebackward.h"
 #include "inferno/gradfn/sumbackward.h"
+#include "inferno/gradfn/squeezebackward.h"
 #include "inferno/gradengine/engine.h"
 #include "inferno/cuda/cudaops.h"
 #include "inferno/core/cpuops.h"
@@ -859,6 +860,104 @@ namespace Inferno {
 		Tensor result(dtype(), shape(), "unsqueeze", device());
 		result.shape().insert(result.shape().begin(), 1);
 		result.strides() = calculate_strides(result.shape());
+
+		return result;
+	}
+
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	//  Function squeeze - non mutating
+	//
+	//
+	//
+	//
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	Tensor Tensor::squeeze(int dim) {
+
+		auto new_shape = shape();
+
+		if (dim < 0) {
+			dim += new_shape.size();
+		}
+
+		if (dim < 0 || dim >= new_shape.size()) {			
+			INFERNO_LOG_ERROR() << "squeeze dim out of range" << std::endl;
+			exit(1);
+		}
+
+		if (new_shape[dim] != 1) {			
+			INFERNO_LOG_ERROR() << "cannot squeeze dimension that is not size 1" << std::endl;
+			exit(1);
+		}
+
+		new_shape.erase(new_shape.begin() + dim);
+
+		Tensor result(dtype(), new_shape, "squeeze", device());
+		result.strides() = calculate_strides(result.shape());
+
+		if (grad_enabled && requires_grad()) {
+			GetImpl(result)->gradfn() = std::make_shared<SqueezeBackward>(*this);
+		}
+
+		return result;
+	}
+
+	Tensor Tensor::squeeze(int dim) const {
+
+		auto new_shape = shape();
+
+		if (dim < 0) {
+			dim += new_shape.size();
+		}
+
+		if (dim < 0 || dim >= new_shape.size()) {
+			INFERNO_LOG_ERROR() << "squeeze dim out of range" << std::endl;
+			exit(1);
+		}
+
+		if (new_shape[dim] != 1) {
+			INFERNO_LOG_ERROR() << "cannot squeeze dimension that is not size 1" << std::endl;
+			exit(1);
+		}
+
+		new_shape.erase(new_shape.begin() + dim);
+
+		Tensor result(dtype(), new_shape, "squeeze", device());
+		result.strides() = calculate_strides(result.shape());
+
+		if (grad_enabled && requires_grad()) {
+			GetImpl(result)->gradfn() = std::make_shared<SqueezeBackward>(*this);
+		}
+
+		return result;
+	}
+
+
+	Tensor Tensor::squeeze() {
+
+		auto new_shape = shape();
+
+		new_shape.erase(
+			std::remove(new_shape.begin(),
+				new_shape.end(),
+				1),
+			new_shape.end());
+
+		// prevent zero-dimensional tensors
+		if (new_shape.empty()) {
+			new_shape.push_back(1);
+		}
+
+		Tensor result(dtype(), new_shape, "squeeze", device());
+		result.strides() = calculate_strides(result.shape());
+
+		if (grad_enabled && requires_grad()) {
+			GetImpl(result)->gradfn() =	std::make_shared<SqueezeBackward>(*this);
+		}
 
 		return result;
 	}

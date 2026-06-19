@@ -4,7 +4,7 @@
 
 namespace Inferno {
 
-	bool grad_enabled = true;
+//	bool grad_enabled = true;
 
 	thread_local std::unordered_map<Inferno::Edge, Inferno::Tensor, Inferno::EdgeHash>* Inferno::Engine::s_grad_map = nullptr;
 

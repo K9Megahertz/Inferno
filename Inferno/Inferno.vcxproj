@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\inferno\autograd\gradmode.cpp" />
     <ClCompile Include="..\src\inferno\checkpoint\checkpoint.cpp" />
     <ClCompile Include="..\src\inferno\core\broadcastops.cpp" />
     <ClCompile Include="..\src\inferno\core\ops.cpp" />
@@ -48,6 +49,7 @@
     <ClCompile Include="..\src\inferno\gradfn\sigmoidbackward.cpp" />
     <ClCompile Include="..\src\inferno\gradfn\slicebackward.cpp" />
     <ClCompile Include="..\src\inferno\gradfn\softmaxbackward.cpp" />
+    <ClCompile Include="..\src\inferno\gradfn\squeezebackward.cpp" />
     <ClCompile Include="..\src\inferno\gradfn\subtractbackward.cpp" />
     <ClCompile Include="..\src\inferno\gradfn\sumbackward .cpp" />
     <ClCompile Include="..\src\inferno\gradfn\transposebackward.cpp" />
@@ -69,6 +71,7 @@
     <ClCompile Include="..\src\inferno\util\timer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\inferno\autograd\gradmode.h" />
     <ClInclude Include="..\include\inferno\checkpoint\checkpoint.h" />
     <ClInclude Include="..\include\inferno\core\dtype_traits.h" />
     <ClInclude Include="..\include\inferno\core\ops.h" />
@@ -121,6 +124,7 @@
     <ClInclude Include="..\src\inferno\gradfn\sigmoidbackward.h" />
     <ClInclude Include="..\src\inferno\gradfn\slicebackward.h" />
     <ClInclude Include="..\src\inferno\gradfn\softmaxbackward.h" />
+    <ClInclude Include="..\src\inferno\gradfn\squeezebackward.h" />
     <ClInclude Include="..\src\inferno\gradfn\subtractbackward.h" />
     <ClInclude Include="..\src\inferno\gradfn\sumbackward.h" />
     <ClInclude Include="..\src\inferno\gradfn\transposebackward.h" />

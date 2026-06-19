@@ -22,6 +22,14 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DatasetTokenizer", "Dataset
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Logger", "Logger\Logger.vcxproj", "{D5809B03-F5E9-4C83-BD2C-B43B0E568978}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "InfernoInference", "InfernoInference\InfernoInference.vcxproj", "{D086E593-1401-42C3-A984-26ADB573D399}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A15CDFB3-3B28-4CFE-9DA0-355128A85B68} = {A15CDFB3-3B28-4CFE-9DA0-355128A85B68}
+		{B915CD61-0250-4346-8CC8-E5C672DBA672} = {B915CD61-0250-4346-8CC8-E5C672DBA672}
+		{D5809B03-F5E9-4C83-BD2C-B43B0E568978} = {D5809B03-F5E9-4C83-BD2C-B43B0E568978}
+		{FB04D642-596A-4504-A579-1A6214FC8101} = {FB04D642-596A-4504-A579-1A6214FC8101}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -94,6 +102,14 @@ Global
 		{D5809B03-F5E9-4C83-BD2C-B43B0E568978}.Release|x64.Build.0 = Release|x64
 		{D5809B03-F5E9-4C83-BD2C-B43B0E568978}.Release|x86.ActiveCfg = Release|Win32
 		{D5809B03-F5E9-4C83-BD2C-B43B0E568978}.Release|x86.Build.0 = Release|Win32
+		{D086E593-1401-42C3-A984-26ADB573D399}.Debug|x64.ActiveCfg = Debug|x64
+		{D086E593-1401-42C3-A984-26ADB573D399}.Debug|x64.Build.0 = Debug|x64
+		{D086E593-1401-42C3-A984-26ADB573D399}.Debug|x86.ActiveCfg = Debug|Win32
+		{D086E593-1401-42C3-A984-26ADB573D399}.Debug|x86.Build.0 = Debug|Win32
+		{D086E593-1401-42C3-A984-26ADB573D399}.Release|x64.ActiveCfg = Release|x64
+		{D086E593-1401-42C3-A984-26ADB573D399}.Release|x64.Build.0 = Release|x64
+		{D086E593-1401-42C3-A984-26ADB573D399}.Release|x86.ActiveCfg = Release|Win32
+		{D086E593-1401-42C3-A984-26ADB573D399}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

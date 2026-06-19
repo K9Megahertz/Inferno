@@ -512,6 +512,11 @@ namespace InfernoTokenizer {
 		return decode(converted);
 	}
 
+	std::string BPETokenizer::decode(uint32_t token) {
+		std::vector<uint32_t> tokens;
+		tokens.push_back(token);
+		return decode(tokens);
+	}
 
 	
 

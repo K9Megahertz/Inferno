@@ -90,6 +90,15 @@ namespace Inferno {
 			m_device = device;
 			//m_id = m_impl->id();
 		}
+		
+		//std::vector version for data 
+		template <typename T>
+		Tensor(DType dtype, const std::vector<T>& data, const std::vector<size_t> shape, std::string name, Inferno::Device device = Inferno::Device::cpu(), bool requires_grad = false) {
+			init_from_raw(dtype, data.data(), data.size(), sizeof(T), std::vector<size_t>(shape), name, device, requires_grad);
+			m_device = device;
+			//m_id = m_impl->id();
+
+		}
 
 
 		
@@ -177,6 +186,9 @@ namespace Inferno {
 		Tensor transpose(int dima, int dimb) const;
 		Tensor unsqueeze(int dim);
 		Tensor unsqueeze(int dim) const;
+		Tensor squeeze(int dim);
+		Tensor squeeze(int dim) const;
+		Tensor squeeze();
 		Tensor slice(int axis, const size_t start, const size_t end, const size_t step = 1);
 		Tensor reshape(const std::vector<size_t>& newshape) const;
 		Tensor contiguous() const;

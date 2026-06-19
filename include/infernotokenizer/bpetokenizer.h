@@ -28,6 +28,7 @@ namespace InfernoTokenizer {
         std::vector<uint32_t> encode(const std::string& text);
         std::string decode(const std::vector<uint32_t>& tokens);
         std::string decode(const std::vector<int>& tokens);
+        std::string decode(uint32_t token);
         
 
         bool find_special_at(const std::string& text, size_t pos, std::string& matched_special, uint32_t& special_id) const;
