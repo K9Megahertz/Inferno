@@ -13,7 +13,7 @@ namespace Inferno {
 
         float lr = m_lr;
         int warmup_steps = 2000;
-        int total_steps = 1000000;
+        int total_steps = 32000;
         float min_lr = m_lr * 0.1f;  // decay to 10% of peak 
         
         if (m_step < warmup_steps) {

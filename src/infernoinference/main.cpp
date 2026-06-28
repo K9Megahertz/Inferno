@@ -532,7 +532,9 @@ int main(int argc, char* argv[]) {
 
 	GPTModel model(vocabulary_size, context_size, embedding_dim, numheads, numblocks);
 
-	Inferno::Checkpoint ckpt = Inferno::Checkpoint::load("checkpoints\\largeckpt1000000.bin");
+	//Inferno::Checkpoint ckpt = Inferno::Checkpoint::load("checkpoints\\largeckpt1000000.bin");
+	//Inferno::Checkpoint ckpt = Inferno::Checkpoint::load("checkpoints\\largeckpt030000.bin");
+	Inferno::Checkpoint ckpt = Inferno::Checkpoint::load("checkpoints\\largeckpt500000.bin");
 
 	
 
@@ -543,14 +545,14 @@ int main(int argc, char* argv[]) {
 
 	model.to(device);
 
-	int max_new_tokens = 1024;
-	float temperature = 0.8f;
+	int max_new_tokens = 8192;
+	float temperature = 0.9f;
 	int top_k = 40;
 
 
 
 
-	std::string prompt = "Hi there";
+	std::string prompt = "To be or not to be, that is the question.";
 
 	std::vector<uint32_t> tokens = tok.encode(prompt);
 	
@@ -613,7 +615,7 @@ int main(int argc, char* argv[]) {
 		int32_t next_token = sample_multinomial(probs); // see below
 
 		if (next_token == 60257) {
-			//break;
+			break;
 		}
 
 		tokens.push_back(next_token);
@@ -623,6 +625,10 @@ int main(int argc, char* argv[]) {
 		std::cout << piece << std::flush;
 
 	}
+
+
+
+	std::cout << "\n\n\n\nEnd Program" << std::flush;
 
 
 

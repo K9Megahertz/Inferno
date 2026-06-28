@@ -1312,7 +1312,23 @@ void save_checkpoint(Inferno::Module model,Inferno::OptimizerAdamW optimizer, si
 	chkpt.meta = Inferno::TrainingMetadata(step, total_steps, 0, 1);
 	chkpt.model = model.state_dict();
 	chkpt.optimizer = optimizer.state_dict();
-	chkpt.save("checkpoints\\largeckpt.bin");
+
+	std::ostringstream oss;
+
+
+	//TODO: move this out of save, save should not have this responsibility
+	//always save a latest checkpoint
+	chkpt.save("checkpoints\\latest_checkpoint.bin");
+
+
+	//write out one with step number
+	if (step % 250 == 0) {
+		oss << "checkpoints\\checkpoint_"
+			<< std::setw(8) << std::setfill('0') << step
+			<< ".bin";
+		chkpt.save(oss.str());
+	}
+	
 }
 
 
@@ -1621,11 +1637,11 @@ int main(int argc, char* argv[]) {
 	size_t steps_per_chunk = 8192;
 
 	InfernoTokenizer::BPETokenizer tok;
-	tok.Initialize({ "data\\openwebtext_merges2.txt", "data\\openwebtext_vocab2.txt" });
+	tok.Initialize({ "data\\openwebtext_merges_gold.txt", "data\\openwebtext_vocab_gold.txt" });
 
 
 	//DataLoader loader("data\\openwebtext_clean3.tokens", batch_size, context_size, steps_per_chunk);
-	DataLoader2 loader("data\\openwebtext_clean3.tokens", batch_size, context_size);
+	DataLoader2 loader("data\\openwebtext_clean_gold.tokens", batch_size, context_size);
 
 
 	
@@ -1646,8 +1662,9 @@ int main(int argc, char* argv[]) {
 	//Inferno::Tensor input = Inferno::Tensor(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(layers[0],-0.5f,0.5f), { layers[0] }, "input", device);
 	//Inferno::Tensor target = Inferno::Tensor(Inferno::DType::Float32, { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, { 10 }, "target", device);
 
-	int checkpoint_interval = 1000;
-	int total_steps = 1000000;
+	int checkpoint_interval = 25;
+	int total_steps = 32000;
+	int micro_steps = 32;
 	int step = 0;
 	float lowestloss = 99;
 
@@ -1710,7 +1727,7 @@ int main(int argc, char* argv[]) {
 
 	auto params = model.parameters();
 	
-	Inferno::OptimizerAdamW optimizer(model.parameters(), 1.5e-5f, 0.9f, 0.95f, 1e-8f, 0.1f);
+	Inferno::OptimizerAdamW optimizer(model.parameters(), total_steps, 1.5e-5f, 0.9f, 0.95f, 1e-8f, 0.1f);
 	//ckpt->optimizer.lr = 3e-5f;
 	if (resume) {
 		optimizer.load_state_dict(ckpt->optimizer);
@@ -1718,65 +1735,75 @@ int main(int argc, char* argv[]) {
 	
 
 	Inferno::CrossEntropyLoss loss_fn;
-	//std::pair<Inferno::Tensor, Inferno::Tensor> pair = loader.next_batch();
+	
+
+	
 	
 	for (; step < total_steps; step++) {
 
-		t1.start();			
+		float accum_loss = 0.0f;
 
-		std::pair<Inferno::Tensor, Inferno::Tensor> pair = loader.next_batch();
-
-		Inferno::Tensor x = pair.first;
-		Inferno::Tensor y = pair.second;
+		for (int micro = 0; micro < micro_steps; micro++) {
 
 
-		if (printtrainingtokens) {
-			auto blahx = x[0].to_vector<int>();
-			auto blahy = y[0].to_vector<int>();
+			t1.start();
 
-			std::string sx = tok.decode(blahx);
-			std::string sy = tok.decode(blahy);
+			std::pair<Inferno::Tensor, Inferno::Tensor> pair = loader.next_batch();
 
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << "**************************** Tensor X ****************************" << std::endl;
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sx.substr(0, 32) << std::endl;
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
+			Inferno::Tensor x = pair.first;
+			Inferno::Tensor y = pair.second;
 
 
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << "**************************** Tensor Y ****************************" << std::endl;
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sy.substr(0, 32) << std::endl;
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
+			if (printtrainingtokens) {
+				auto blahx = x[0].to_vector<int>();
+				auto blahy = y[0].to_vector<int>();
+
+				std::string sx = tok.decode(blahx);
+				std::string sy = tok.decode(blahy);
+
+				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << "**************************** Tensor X ****************************" << std::endl;
+				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sx.substr(0, 32) << std::endl;
+				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
+				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
+
+
+				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << "**************************** Tensor Y ****************************" << std::endl;
+				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sy.substr(0, 32) << std::endl;
+				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
+				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
+			}
+
+
+			x = x.to(device);
+			y = y.to(device);
+
+			//Inferno::Tensor logits = model.forward(input);
+			Inferno::Tensor logits = model.forward(x);
+
+			
+			Inferno::Tensor loss = loss_fn(logits, y);
+			loss = loss / micro_steps;
+
+			accum_loss += loss.to(Inferno::Device::cpu()).item<float>();
+			
+
+			std::cout << ".";
+
+			if (laptimingenabled) t1.lap("loss");
+			
+			loss.backward();
+			if (laptimingenabled) t1.lap("backward");
+
+
 		}
+		std::cout << std::endl;
 
-
-		x = x.to(device);
-		y = y.to(device);
-			
-		//Inferno::Tensor logits = model.forward(input);
-		Inferno::Tensor logits = model.forward(x);
-			
-
-		//for inference
-		//logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG, "next logits slice");
-		//Inferno::Tensor next_logits = x.slice(-2, m_context_size - 1, m_context_size - 1);
-		//Inferno::Tensor next_logits = Inferno::select(x, -2, m_context_size - 1); // {B,V}
-		//std::cout << next_logits << std::endl;		
-
-		//std::cout << prediction << std::endl;
-		//std::cout << target << std::endl;
-
-		//Inferno::Tensor loss = loss_fn(logits, target);
-		Inferno::Tensor loss = loss_fn(logits, y);
-		if (laptimingenabled) t1.lap("loss");
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Loss" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << loss << std::endl;
+		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << accum_loss << std::endl;
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 			
-		loss.backward();
-		if (laptimingenabled) t1.lap("backward");
-
+		
 
 		optimizer.step();
 		optimizer.zero_grad();
@@ -1798,11 +1825,14 @@ int main(int argc, char* argv[]) {
 			}
 		}
 
-		Inferno::Tensor lossp = loss.to(Inferno::Device::cpu());
-		if (lossp.item<float>() < lowestloss)
-			lowestloss = lossp.item<float>();
+		//Inferno::Tensor lossp = loss.to(Inferno::Device::cpu());		
+		//if (lossp.item<float>() < lowestloss)
+		    //lowestloss = lossp.item<float>();
+		if (accum_loss < lowestloss)
+			lowestloss = accum_loss ;
 
-		avg.add(lossp.item<float>());
+		//avg.add(lossp.item<float>());
+		avg.add(accum_loss);
 
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO)
 			<< std::fixed
@@ -1814,7 +1844,8 @@ int main(int argc, char* argv[]) {
 			<< " ms | LR: "
 			<< std::setw(9) << std::setfill('0') << std::setprecision(8) << optimizer.getLR()
 			<< " | Loss: "
-			<< std::setw(9) << std::setfill('0') << std::setprecision(5) << lossp.item<float>()
+			//<< std::setw(9) << std::setfill('0') << std::setprecision(5) << lossp.item<float>()
+			<< std::setw(9) << std::setfill('0') << std::setprecision(5) << accum_loss
 			<< " | Lowest: "
 			<< std::setw(9) << std::setfill('0') << std::setprecision(5) << lowestloss
 			<< " | Average: "

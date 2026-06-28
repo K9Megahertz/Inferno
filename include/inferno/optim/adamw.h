@@ -30,21 +30,23 @@ namespace Inferno {
 
     class OptimizerAdamW {
     public:
-        OptimizerAdamW(            
+        OptimizerAdamW(
             std::vector<std::pair<std::string, Tensor*>> parameters,
+            size_t total_steps,
             float lr = 3e-4f,
             float beta1 = 0.9f,
             float beta2 = 0.95f,
             float eps = 1e-8f,
-            float weight_decay = 0.1f
+            float weight_decay = 0.1f           
         )
             : m_parameters(parameters),
+            m_total_steps(total_steps),
             m_lr(lr),
             m_beta1(beta1),
             m_beta2(beta2),
             m_eps(eps),
             m_weight_decay(weight_decay),
-            m_step(0)
+            m_step(0)            
         {
         }
 
@@ -74,6 +76,7 @@ namespace Inferno {
         float m_eps;
         float m_weight_decay;
         float m_lrcurrent;
+        size_t m_total_steps;
 
         size_t m_step;
     };
