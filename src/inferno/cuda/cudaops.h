@@ -6,6 +6,7 @@
 #include <inferno/util/logging.h>
 #include <inferno/util/logging_internal.h>
 #include <cublas_v2.h>
+
 	
 
 namespace Inferno {
@@ -449,6 +450,9 @@ namespace Inferno {
 
 	template <typename T>
 	void cuda_flash_block(const T* qkvptr, T* optr, size_t B, size_t Tseq, size_t C, size_t H, size_t D, bool causal);
+
+	template <typename T>
+	void cuda_flash_block_my_version_check(const T* qkvptr, T* optr, size_t B, size_t Tseq, size_t C, size_t H, size_t D, bool causal);
 
 	template <typename T>
 	void cuda_flash_backward_fused(const T* qkvptr, const T* doutptr, T* dqkvptr, size_t B, size_t Tseq, size_t C, size_t H, size_t D, bool causal);

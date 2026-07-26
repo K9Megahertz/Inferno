@@ -17,6 +17,29 @@ Inferno::Device device = Inferno::Device::cuda(0);
 CoreLogger::Logger logger;
 
 
+// Returns true if every element of O_test matches O_ref within tolerance, false otherwise.
+bool outputs_match(float* O_ref, float* O_test, size_t n, float abs_tol = 1e-3f, float rel_tol = 1e-3f) {
+
+	for (size_t i = 0; i < n; i++) {
+		float a = O_ref[i];
+		float b = O_test[i];
+
+		if (!std::isfinite(a) || !std::isfinite(b)) {
+			return false;
+		}
+
+		float abs_diff = std::fabs(a - b);
+		float rel_diff = abs_diff / std::max(std::fabs(a), 1e-6f);
+
+		if (abs_diff > abs_tol && rel_diff > rel_tol) {
+			return false;
+		}
+	}
+	return true;
+}
+
+
+
 class PositionalEncoding : public Inferno::Module {
 
 
@@ -129,12 +152,20 @@ public:
 		// attn = Softmax(scores, -1).contiguous();
 		// y = matmul(attn, v);
 		//
-		Inferno::Tensor y = Inferno::flash_attention_bigdaddy_forward(qkv, m_num_heads, true);		
+		//Inferno::Tensor y = Inferno::flash_attention_bigdaddy_forward(qkv, m_num_heads, true);
+		Inferno::Tensor y = Inferno::flash_attention_bigdaddy_forward_my_version_check(qkv, m_num_heads, true);
 
+
+
+		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "y after flash_attention_bigdaddy_forward(qkv, m_num_heads, true)" << std::endl;
+		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << y << std::endl;
+		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+
+		
 		// [B, T, C]
 		y = W_out.forward(y);
 		
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "y after  W_out.forward(y)" << std::endl;
+		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "y after W_out.forward(y)" << std::endl;
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << y << std::endl;
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
@@ -313,7 +344,7 @@ public:
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << input << std::endl;
 		//Get embedding vectors
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Embedding weights and bias" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << emb1 << std::endl;
+		//logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << emb1 << std::endl;
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
 
@@ -534,9 +565,11 @@ int main(int argc, char* argv[]) {
 
 	//Inferno::Checkpoint ckpt = Inferno::Checkpoint::load("checkpoints\\largeckpt1000000.bin");
 	//Inferno::Checkpoint ckpt = Inferno::Checkpoint::load("checkpoints\\largeckpt030000.bin");
-	Inferno::Checkpoint ckpt = Inferno::Checkpoint::load("checkpoints\\largeckpt500000.bin");
-
+	//Inferno::Checkpoint ckpt = Inferno::Checkpoint::load("checkpoints\\largeckpt500000.bin");
+	Inferno::Checkpoint ckpt = Inferno::Checkpoint::load("checkpoints\\latest_checkpoint.bin");
 	
+
+	 
 
 	model.load_state_dict(ckpt.model);
 
@@ -552,7 +585,7 @@ int main(int argc, char* argv[]) {
 
 
 
-	std::string prompt = "To be or not to be, that is the question.";
+	std::string prompt = "The old lighthouse stood at the edge of the cliff, its paint long faded by decades of salt wind and driving rain. Marta had visited it every summer since she was a child, climbing the spiral staircase with her grandfather while he told stories about the ships that used to pass through these waters. Back then, the light still worked, sweeping its slow beam across the dark sea every ten seconds, a rhythm as familiar to her as her own heartbeat. Now the lamp was dark, decommissioned years ago when the shipping lanes moved further out, and the building had been left to the gulls and the wind.";
 
 	std::vector<uint32_t> tokens = tok.encode(prompt);
 	
@@ -592,12 +625,7 @@ int main(int argc, char* argv[]) {
 			vals.begin() + last_offset + V
 		);
 
-		Inferno::Tensor last_logits(
-			Inferno::DType::Float32,
-			last,
-			{ V },
-			"last_logits"
-		);
+		Inferno::Tensor last_logits(Inferno::DType::Float32, last, { V }, "last_logits");
 
 
 		

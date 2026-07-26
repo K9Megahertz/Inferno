@@ -128,6 +128,7 @@
     <ClInclude Include="..\src\inferno\gradfn\subtractbackward.h" />
     <ClInclude Include="..\src\inferno\gradfn\sumbackward.h" />
     <ClInclude Include="..\src\inferno\gradfn\transposebackward.h" />
+    <ClInclude Include="..\src\inferno\memmgr\memmgr.h" />
     <ClInclude Include="..\src\inferno\modules\embedding_kernels.h" />
     <ClInclude Include="..\src\inferno\modules\layernorm_kernels.h" />
     <ClInclude Include="..\src\inferno\storage\cpustorage.h" />
@@ -288,6 +289,7 @@
     </Link>
     <CudaCompile>
       <CodeGeneration>compute_61,sm_61;compute_89,sm_89</CodeGeneration>
+      <AdditionalOptions>-std=c++17 %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -310,6 +312,7 @@
     </Link>
     <CudaCompile>
       <CodeGeneration>compute_61,sm_61;compute_89,sm_89</CodeGeneration>
+      <AdditionalOptions>-std=c++17 %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -1,5 +1,6 @@
 #include "cudastorage.h"
 #include "inferno/cuda/cudaops.h"
+#include "inferno/memmgr/memmgr.h"
 namespace  Inferno {
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -15,11 +16,13 @@ namespace  Inferno {
 
     CUDAStorage::CUDAStorage(size_t numbytes) {
         
-		check_cuda(cudaMalloc(&ptr, numbytes), "CUDAstorage failed to cudaMalloc");
+		//check_cuda(cudaMalloc(&ptr, numbytes), "CUDAstorage failed to cudaMalloc");
+		ptr = CachingAllocator::instance().allocate(numbytes);
         m_numbytes = numbytes;
     }
 
     CUDAStorage::~CUDAStorage() {        
-		check_cuda(cudaFree(ptr), "CUDAstorage failed to cudaFree");
+		//check_cuda(cudaFree(ptr), "CUDAstorage failed to cudaFree");
+		CachingAllocator::instance().deallocate(ptr);
     }
 }

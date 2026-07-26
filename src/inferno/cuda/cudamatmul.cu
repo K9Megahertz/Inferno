@@ -3,6 +3,7 @@
 #include <vector>
 #include <numeric>
 #include "cudaops.h"
+#include "inferno/memmgr/memmgr.h"
 
 namespace Inferno {
 
@@ -182,11 +183,19 @@ namespace Inferno {
         size_t* d_b_strides = nullptr;
 
         //if (batch_rank > 0) {
-            check_cuda(cudaMalloc(&d_out_batch_shape, batch_rank * sizeof(size_t)), "cuda_matmul cudaMalloc d_out_batch_shape failed");
-            check_cuda(cudaMalloc(&d_a_batch_shape, batch_rank * sizeof(size_t)), "cuda_matmul cudaMalloc d_a_batch_padded failed");
-            check_cuda(cudaMalloc(&d_b_batch_shape, batch_rank * sizeof(size_t)), "cuda_matmul cudaMalloc d_b_batch_padded failed");
-            check_cuda(cudaMalloc(&d_a_strides, a_rank * sizeof(size_t)), "cuda_matmul cudaMalloc d_a_batch_strides failed");
-            check_cuda(cudaMalloc(&d_b_strides, b_rank * sizeof(size_t)), "cuda_matmul cudaMalloc d_b_batch_strides failed");
+            //check_cuda(cudaMalloc(&d_out_batch_shape, batch_rank * sizeof(size_t)), "cuda_matmul cudaMalloc d_out_batch_shape failed");
+            //check_cuda(cudaMalloc(&d_a_batch_shape, batch_rank * sizeof(size_t)), "cuda_matmul cudaMalloc d_a_batch_padded failed");
+            //check_cuda(cudaMalloc(&d_b_batch_shape, batch_rank * sizeof(size_t)), "cuda_matmul cudaMalloc d_b_batch_padded failed");
+            //check_cuda(cudaMalloc(&d_a_strides, a_rank * sizeof(size_t)), "cuda_matmul cudaMalloc d_a_batch_strides failed");
+            //check_cuda(cudaMalloc(&d_b_strides, b_rank * sizeof(size_t)), "cuda_matmul cudaMalloc d_b_batch_strides failed");
+
+
+            d_out_batch_shape = static_cast<size_t*>(CachingAllocator::instance().allocate(batch_rank * sizeof(size_t)));
+            d_a_batch_shape = static_cast<size_t*>(CachingAllocator::instance().allocate(batch_rank * sizeof(size_t)));
+            d_b_batch_shape = static_cast<size_t*>(CachingAllocator::instance().allocate(batch_rank * sizeof(size_t)));
+            d_a_strides = static_cast<size_t*>(CachingAllocator::instance().allocate(a_rank * sizeof(size_t)));
+            d_b_strides = static_cast<size_t*>(CachingAllocator::instance().allocate(b_rank * sizeof(size_t)));
+            
 
             check_cuda(cudaMemcpy(d_out_batch_shape,out_batch_shape.data(),batch_rank * sizeof(size_t),cudaMemcpyHostToDevice),"cuda_matmul cudaMemcpy d_out_batch_shape failed");
             check_cuda(cudaMemcpy(d_a_batch_shape,a_batch_shape.data(),batch_rank * sizeof(size_t),cudaMemcpyHostToDevice),"cuda_matmul cudaMemcpy d_a_batch_padded failed");
@@ -225,11 +234,17 @@ namespace Inferno {
         //check_cuda(cudaDeviceSynchronize(), "cuda_matmul kernel execution failed");
 
         //if (batch_rank > 0) {
-            check_cuda(cudaFree(d_out_batch_shape), "cuda_matmul cudaFree d_out_batch_shape failed");
-            check_cuda(cudaFree(d_a_batch_shape), "cuda_matmul cudaFree d_a_batch_shape failed");
-            check_cuda(cudaFree(d_b_batch_shape), "cuda_matmul cudaFree d_b_batch_shape failed");
-            check_cuda(cudaFree(d_a_strides), "cuda_matmul cudaFree d_a_strides failed");
-            check_cuda(cudaFree(d_b_strides), "cuda_matmul cudaFree d_b_strides failed");
+            //check_cuda(cudaFree(d_out_batch_shape), "cuda_matmul cudaFree d_out_batch_shape failed");
+            //check_cuda(cudaFree(d_a_batch_shape), "cuda_matmul cudaFree d_a_batch_shape failed");
+            //check_cuda(cudaFree(d_b_batch_shape), "cuda_matmul cudaFree d_b_batch_shape failed");
+            //check_cuda(cudaFree(d_a_strides), "cuda_matmul cudaFree d_a_strides failed");
+            //check_cuda(cudaFree(d_b_strides), "cuda_matmul cudaFree d_b_strides failed");
+
+            CachingAllocator::instance().deallocate(d_out_batch_shape);
+            CachingAllocator::instance().deallocate(d_a_batch_shape);
+            CachingAllocator::instance().deallocate(d_b_batch_shape);
+            CachingAllocator::instance().deallocate(d_a_strides);
+            CachingAllocator::instance().deallocate(d_b_strides);
         //}
     }
 
@@ -600,11 +615,17 @@ namespace Inferno {
         size_t* d_a_strides = nullptr;
         size_t* d_b_strides = nullptr;
 
-        check_cuda(cudaMalloc(&d_out_batch_shape, batch_rank * sizeof(size_t)), "cuda_matmul_fast cudaMalloc d_out_batch_shape failed");
-        check_cuda(cudaMalloc(&d_a_batch_shape, batch_rank * sizeof(size_t)), "cuda_matmul_fast cudaMalloc d_a_batch_shape failed");
-        check_cuda(cudaMalloc(&d_b_batch_shape, batch_rank * sizeof(size_t)), "cuda_matmul_fast cudaMalloc d_b_batch_shape failed");
-        check_cuda(cudaMalloc(&d_a_strides, a_rank * sizeof(size_t)), "cuda_matmul_fast cudaMalloc d_a_strides failed");
-        check_cuda(cudaMalloc(&d_b_strides, b_rank * sizeof(size_t)), "cuda_matmul_fast cudaMalloc d_b_strides failed");
+        //check_cuda(cudaMalloc(&d_out_batch_shape, batch_rank * sizeof(size_t)), "cuda_matmul_fast cudaMalloc d_out_batch_shape failed");
+        //check_cuda(cudaMalloc(&d_a_batch_shape, batch_rank * sizeof(size_t)), "cuda_matmul_fast cudaMalloc d_a_batch_shape failed");
+        //check_cuda(cudaMalloc(&d_b_batch_shape, batch_rank * sizeof(size_t)), "cuda_matmul_fast cudaMalloc d_b_batch_shape failed");
+        //check_cuda(cudaMalloc(&d_a_strides, a_rank * sizeof(size_t)), "cuda_matmul_fast cudaMalloc d_a_strides failed");
+        //check_cuda(cudaMalloc(&d_b_strides, b_rank * sizeof(size_t)), "cuda_matmul_fast cudaMalloc d_b_strides failed");
+
+        d_out_batch_shape = static_cast<size_t*>(CachingAllocator::instance().allocate(batch_rank * sizeof(size_t)));
+        d_a_batch_shape = static_cast<size_t*>(CachingAllocator::instance().allocate(batch_rank * sizeof(size_t)));
+        d_b_batch_shape = static_cast<size_t*>(CachingAllocator::instance().allocate(batch_rank * sizeof(size_t)));
+        d_a_strides = static_cast<size_t*>(CachingAllocator::instance().allocate(a_rank * sizeof(size_t)));
+        d_b_strides = static_cast<size_t*>(CachingAllocator::instance().allocate(b_rank * sizeof(size_t)));
 
         if (batch_rank > 0) {
             check_cuda(cudaMemcpy(d_out_batch_shape, out_batch_shape.data(), batch_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_matmul_fast cudaMemcpy d_out_batch_shape failed");
@@ -645,11 +666,17 @@ namespace Inferno {
         check_cuda(cudaGetLastError(), "cuda_matmul_fast kernel launch failed");
         //check_cuda(cudaDeviceSynchronize(), "cuda_matmul_fast kernel execution failed");
 
-        check_cuda(cudaFree(d_out_batch_shape), "cuda_matmul_fast cudaFree d_out_batch_shape failed");
-        check_cuda(cudaFree(d_a_batch_shape), "cuda_matmul_fast cudaFree d_a_batch_shape failed");
-        check_cuda(cudaFree(d_b_batch_shape), "cuda_matmul_fast cudaFree d_b_batch_shape failed");
-        check_cuda(cudaFree(d_a_strides), "cuda_matmul_fast cudaFree d_a_strides failed");
-        check_cuda(cudaFree(d_b_strides), "cuda_matmul_fast cudaFree d_b_strides failed");
+        //check_cuda(cudaFree(d_out_batch_shape), "cuda_matmul_fast cudaFree d_out_batch_shape failed");
+        //check_cuda(cudaFree(d_a_batch_shape), "cuda_matmul_fast cudaFree d_a_batch_shape failed");
+        //check_cuda(cudaFree(d_b_batch_shape), "cuda_matmul_fast cudaFree d_b_batch_shape failed");
+        //check_cuda(cudaFree(d_a_strides), "cuda_matmul_fast cudaFree d_a_strides failed");
+        //check_cuda(cudaFree(d_b_strides), "cuda_matmul_fast cudaFree d_b_strides failed");
+
+        CachingAllocator::instance().deallocate(d_out_batch_shape);
+        CachingAllocator::instance().deallocate(d_a_batch_shape);
+        CachingAllocator::instance().deallocate(d_b_batch_shape);
+        CachingAllocator::instance().deallocate(d_a_strides);
+        CachingAllocator::instance().deallocate(d_b_strides);
     }
 
 
@@ -1116,7 +1143,7 @@ namespace Inferno {
             const float alpha = 1.0f;
             const float beta = 0.0f;
 
-            check_cublas(
+            /*check_cublas(
                 cublasSgemm(
                     handle,
                     opB,
@@ -1131,6 +1158,24 @@ namespace Inferno {
                     optr, static_cast<int>(N)
                 ),
                 "cublasSgemm failed"
+            );*/
+            check_cublas(
+                cublasGemmEx(
+                    handle,
+                    opB,
+                    opA,
+                    static_cast<int>(N),   // swapped for row-major
+                    static_cast<int>(M),
+                    static_cast<int>(K),
+                    &alpha,
+                    bptr, CUDA_R_32F, ldaB,
+                    aptr, CUDA_R_32F, ldaA,
+                    &beta,
+                    optr, CUDA_R_32F, static_cast<int>(N),
+                    CUBLAS_COMPUTE_32F_FAST_TF32,
+                    CUBLAS_GEMM_DEFAULT_TENSOR_OP
+                ),
+                "cublasGemmEx failed"
             );
             //CUDA_CHECK_SYNC("cublasSgemm in row major");
         }

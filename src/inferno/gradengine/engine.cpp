@@ -70,10 +70,10 @@ namespace Inferno {
 		for (auto it = topo.rbegin(); it != topo.rend(); it++) {
 			INFERNO_LOG_DEBUG() << "Engine backward step: " << (*it)->name() << std::endl;			
 			t1.start();
-			(*it)->backward();  // Perform the gradient accumulation for the current node
-			cudaDeviceSynchronize(); 
+			(*it)->backward();  // Perform the gradient accumulation for the current node			
+			//cudaDeviceSynchronize(); 
 			t1.stop();
-			INFERNO_LOG_DEBUG() << "Engine backward step: " + (*it)->name() << " took: " << t1.elapsed_ms() << " ms." << std::endl;
+			//INFERNO_LOG_INFO() << "Engine backward step: " + (*it)->name() << " took: " << t1.elapsed_ms() << " ms." << std::endl;
 			
 
 			count++;

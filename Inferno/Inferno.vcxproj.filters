@@ -85,6 +85,9 @@
     <Filter Include="Source Files\autograd">
       <UniqueIdentifier>{762b4420-a19d-4040-9de4-155903ae9756}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\memmgr">
+      <UniqueIdentifier>{66f8faf1-e93b-4e23-bc67-16d598642563}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\inferno\checkpoint\checkpoint.cpp">
@@ -436,6 +439,9 @@
     </ClInclude>
     <ClInclude Include="..\include\inferno\autograd\gradmode.h">
       <Filter>Header Files\autograd</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\inferno\memmgr\memmgr.h">
+      <Filter>Header Files\memmgr</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

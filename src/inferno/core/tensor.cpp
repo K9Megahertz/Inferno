@@ -206,8 +206,8 @@ namespace Inferno {
 			//Print out data
 			if (p->data()) {
 
-				size_t numdata = std::min((int)tcpu.numel(), 192);
-
+				size_t numdata = std::min((int)tcpu.numel(), 256);
+				
 				dptr = p->data_as_ptr<AT>();
 
 

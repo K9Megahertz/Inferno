@@ -1752,6 +1752,85 @@ namespace Inferno {
 		return out;
 	}*/
 
+
+
+	
+
+	Tensor flash_attention_bigdaddy_forward_my_version_check(const Tensor& qkv, size_t num_heads, bool causal) {
+
+		std::vector<size_t> shape = qkv.shape();
+
+		if (shape.size() != 3) {
+			INFERNO_LOG_ERROR() << "flash_attention_bigdaddy_forward expects qkv shape [B,T,3C]" << std::endl;
+			exit(1);
+		}
+
+		if (!qkv.is_contiguous()) {
+			INFERNO_LOG_ERROR() << "flash_attention_bigdaddy_forward expects qkv to be contiguous" << std::endl;
+			exit(1);
+		}
+
+		size_t B = shape[0];
+		size_t Tseq = shape[1];
+		size_t threeC = shape[2];
+
+		if (threeC % 3 != 0) {
+			INFERNO_LOG_ERROR() << "flash_attention_bigdaddy_forward last dim must be 3*C" << std::endl;
+			exit(1);
+		}
+
+		size_t C = threeC / 3;
+
+		if (C % num_heads != 0) {
+			INFERNO_LOG_ERROR() << "flash_attention_bigdaddy_forward C must be divisible by num_heads" << std::endl;
+			exit(1);
+		}
+
+		size_t H = num_heads;
+		size_t D = C / H;
+
+		Tensor out(qkv.dtype(), { B, Tseq, C }, "flash_attention_bigdaddy_out", qkv.device());
+
+		dispatchFloat(qkv.dtype(), [&](auto TagA) {
+			using AT = typename decltype(TagA)::type;
+
+			const AT* qkvptr = GetImpl(qkv)->data_as_ptr<AT>();
+			AT* outptr = GetImpl(out)->data_as_ptr<AT>();
+
+			switch (qkv.device().m_type) {
+			case DeviceType::CUDA:				
+				cuda_flash_block_my_version_check<AT>(
+					qkvptr,
+					outptr,
+					B,
+					Tseq,
+					C,
+					H,
+					D,
+					causal
+				);
+				break;
+
+			default:
+				INFERNO_LOG_ERROR() << "flash_attention_bigdaddy_forward only supports CUDA for now" << std::endl;
+				exit(1);
+			}
+			});
+
+		if (Inferno::grad_enabled && qkv.requires_grad()) {
+			INFERNO_LOG_DEBUG() << "FlashAttentionBigDaddy - Making backward node" << std::endl;
+
+			// You will need a new backward node for this packed version.
+			GetImpl(out)->gradfn() = std::make_shared<FlashAttentionBigDaddyBackwardFast>(qkv, out, num_heads, causal);
+
+			out.set_requires_grad(true);
+		}
+
+		return out;
+	}
+
+
+
 	Tensor flash_attention_bigdaddy_forward(const Tensor& qkv, size_t num_heads, bool causal) {
 
 		std::vector<size_t> shape = qkv.shape();

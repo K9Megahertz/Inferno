@@ -211,16 +211,10 @@ namespace Inferno {
 		size_t H = m_num_heads;
 		size_t D = C / H;
 
-		Tensor g_qkv(
-			m_qkv.dtype(),
-			qkv_shape,
-			"flash_attention_bigdaddy_grad_qkv",
-			m_qkv.device()
-		);
+		Tensor g_qkv(m_qkv.dtype(), qkv_shape, "flash_attention_bigdaddy_grad_qkv", m_qkv.device());
 
 		if (m_qkv.dtype() != DType::Float32) {
-			INFERNO_LOG_ERROR()
-				<< "cuda_flash_backward_fused currently only supports Float32";
+			INFERNO_LOG_ERROR()	<< "cuda_flash_backward_fused currently only supports Float32";
 			std::exit(1);
 		}
 

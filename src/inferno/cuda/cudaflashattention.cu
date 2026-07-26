@@ -2080,7 +2080,7 @@ namespace Inferno {
 		for (size_t tile_start = 0; tile_start < kv_limit; tile_start += TILE_N) {
 			size_t tile_size = min((size_t)TILE_N, kv_limit - tile_start);
 
-			for (int idx = tid; idx < TILE_N * DMAX; idx += blockDim.x) {
+			for (int idx = tid; idx < TILE_N * DMAX; idx += blockDim.x) {    
 				int j_local = idx / DMAX;
 				int d = idx % DMAX;
 
@@ -2231,11 +2231,298 @@ namespace Inferno {
 	}
 
 
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//  Function cuda_my_flash_attention_kernel
+//  Base implementation for a single 64 element wide head
+//
+//
+//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+	template<typename T, int BLOCK_M, int TILE_N, int DMAX>
+	__global__ void cuda_my_fused_flash_attention_kernel(
+		const T* __restrict__ QKV,
+		T* __restrict__ O,
+		int B,       //number of batches
+		int Tseq,    //number of tokens in sequence
+		int C,       //width of qkv matrix
+		int H,       //number of heads   
+		int D,
+		bool causal  //do you wanna wear a mask at the party?
+	)
+	{
+
+
+		int head = blockIdx.y;
+		int batch = blockIdx.z;
+
+		int tid = threadIdx.x;
+
+		int warp = tid / 32;
+		int lane = tid % 32;
+
+
+		T scale = rsqrtf((T)DMAX); //scale = 1 / sqrtf(DMAX)		
+
+
+		__shared__ T ShQ[BLOCK_M][DMAX];     // 8 x 64   rows x col
+		__shared__ T ShK[TILE_N][DMAX];      // 32 x 64   rows x col
+		__shared__ T ShV[TILE_N][DMAX];      // 32 x 64   rows x col
+
+		__shared__ T ShM[BLOCK_M];             // 8 rows
+		__shared__ T ShL[BLOCK_M];             // 8 rows
+		__shared__ T ShP[BLOCK_M][TILE_N];   // 8 x 32   rows x col, one p for every thread
+		__shared__ T ShAcc[BLOCK_M][DMAX];   // 8 x 64   rows x col
+		__shared__ T ShAlpha[BLOCK_M];         // 8 rows
+		__shared__ T ShBeta[BLOCK_M];          // 8 rows
+
+
+		//initialize shared mems
+
+		//ShM and ShL
+		if (tid < BLOCK_M) {
+			ShM[tid] = -INFINITY;
+			ShL[tid] = 0.0f;
+		}
+
+		//ShAcc
+		for (int idx = tid; idx < BLOCK_M * DMAX; idx += blockDim.x) {
+			int row = idx / DMAX;  //0..7
+			int col = idx % DMAX;  //0..63
+			ShAcc[row][col] = 0.0f;
+		}
+
+
+		//Load Q into shared memory ShQ
+		for (int idx = tid; idx < BLOCK_M * DMAX; idx += blockDim.x) {
+
+			int row = idx / DMAX;
+			int col = idx % DMAX;
+
+			int globalrow = blockIdx.x * BLOCK_M + row;
+
+			int qidx = batch * Tseq * 3 * C +           //offset to the correct batch
+				globalrow * 3 * C +     //offset down the to the correct row based on blockidx.x, etc..
+				0 * C +                  //offset to the corect section of the qkv matrix (0=Q, 1=K or 2=V section)                           
+				head * DMAX + col;     //offset to the corect head 
+
+
+			ShQ[row][col] = (globalrow < Tseq) ? QKV[qidx] : 0.0f;
+
+		}
+
+
+		__syncthreads();
+
+		int num_ktiles = (Tseq + TILE_N - 1) / TILE_N;
+
+		// under causal masking, no query in this block can see keys past its own block's range,
+		// so tiles entirely beyond that range can be skipped outright
+		if (causal) {
+			int block_q_end = min(Tseq, blockIdx.x * BLOCK_M + BLOCK_M);   // exclusive upper bound on valid query positions in this block
+			num_ktiles = (block_q_end + TILE_N - 1) / TILE_N;
+		}
+
+		for (int ktile = 0; ktile < num_ktiles; ktile++) {
+
+			//Load K into shared memory ShK and might as well load V int ShV too
+			for (int idx = tid; idx < TILE_N * DMAX; idx += blockDim.x) {
+
+				int row = idx / DMAX;
+				int col = idx % DMAX;
+
+				int globalrow = ktile * TILE_N + row;
+
+				int kidx = batch * Tseq * 3 * C +   //offset to the correct batch
+					globalrow * 3 * C +      //offset down the to the correct row based on blockidx.x, etc..
+					1 * C +                  //offset to the corect section of the qkv matrix (0=Q, 1=K or 2=V section)                           
+					head * DMAX + col;     //offset to the corect head 
+
+				int vidx = batch * Tseq * 3 * C +   //offset to the correct batch
+					globalrow * 3 * C +      //offset down the to the correct row based on blockidx.x, etc..
+					2 * C +                  //offset to the corect section of the qkv matrix (0=Q, 1=K or 2=V section)                           
+					head * DMAX + col;     //offset to the corect head 
+
+
+				ShK[row][col] = (globalrow < Tseq) ? QKV[kidx] : 0.0f;
+				ShV[row][col] = (globalrow < Tseq) ? QKV[vidx] : 0.0f;
+
+
+			}
+
+			__syncthreads();
+
+
+
+
+			//now do dotproduct
+			T score = 0.0f;
+
+			int j = ktile * TILE_N + lane;   // this lane's global key position        
+			int t = blockIdx.x * BLOCK_M + warp; // this lane's global query position
+
+			for (int i = 0; i < DMAX; i++) {
+				score += ShQ[warp][i] * ShK[lane][i];
+			}
+			if (j >= Tseq || (j > t)) score = -INFINITY;   // mask out padded/nonexistent keys
+
+
+
+			//ok S tile is done at this point
+			//scale the values in S tile
+			score *= scale;   // 1/sqrt(D_HEAD)
+
+
+
+
+			//butterfly time, set the initial values
+			//these values(registers) will be shared to the other threads in the warp
+			T thread_m = score;
+			T thread_l = (score > -INFINITY) ? 1.0f : 0.0f;   // guard 1: masked lane contributes nothing
+
+
+			//every thread in the warp has computed its own score 
+			//which also is the max for that thread since it only has the one value
+			//so lets share values among all the threads in the warp and update the maxes
+			//and the running sums
+			//after the shuffle every thread will have the max for the tile 
+			//as well as the running sum for the tile
+
+			//process the tile
+			for (int i = 16; i > 0; i >>= 1) {
+				T other_m = __shfl_xor_sync(0xffffffff, thread_m, i); //offer up my m value and get my partners in return
+				T other_l = __shfl_xor_sync(0xffffffff, thread_l, i); //offer up my l value and get my partners in return
+
+
+				//do we have a new bigger max?
+				T new_m = fmaxf(thread_m, other_m);
+				// take our current l value and scale it by exp(m - new_m)
+				// also scale other_l by the new factor as well. 1.0f if theres no new max
+				// if there is a new max, subract the exponents (basically like multiplying by a fraction
+				// which undoes the old scaling then redo with the new factor)
+				T new_l = (new_m == -INFINITY) ? 0.0f : thread_l * __expf(thread_m - new_m) + other_l * __expf(other_m - new_m);  //guard 2
+
+				//update the values for the next loop iter
+				thread_m = new_m;
+				thread_l = new_l;
+			}
+
+			//so the tiles max (m) and running sum (l) has been computed
+			//incorporate it into the saved running tally from previous tiles
+			//using the same formulas like we did above, but were just doing two values
+			// current_m and the one we just computed above (m)
+			// current and the one we just computed above (l)
+
+			T running_m = ShM[warp];   // grab this FIRST, before anything overwrites it
+			T running_l = ShL[warp];   // grab this FIRST, before anything overwrites it
+
+			//is the max we got from this tile (m) bigger than the one we saved?
+			T new_m = fmaxf(thread_m, running_m);
+
+			// take our current tile l value and scale it by exp(m - new_m)
+			// also scale the saved l (old_l) by the new factor as well. 1.0f if theres no new max
+			// if there is a new max, subract the exponents (basically like multiplying by a fraction
+			// which undoes the old scaling then redo with the new factor)
+			T new_l = (new_m == -INFINITY) ? 0.0f : running_l * __expf(running_m - new_m) + thread_l * __expf(thread_m - new_m); // guard 3
+
+			//ok we have the updated values, now save them to the shared mem holding area
+			//just one thread does the update, not everybody all at once
+			//everybody has the same value at this point anyway
+			if (lane == 0) {
+				ShM[warp] = new_m;
+				ShL[warp] = new_l;
+			}
+
+
+
+			//ok now we gotta get the scale factor based on the updates from the latest tile
+			// again if theres no new max, this ends up as 1
+			// if there is a new max then we gotta scale the stuff we computed before
+
+			// alpha rescales the OLD accumulator (ShAcc) onto new_m's scale
+			//float alpha = __expf(running_m - new_m);
+			T alpha = (new_m == -INFINITY) ? 0.0f : __expf(running_m - new_m);   // guard 4
+			// beta rescales THIS tile's new contribution (sum) onto new_m's scale
+			//float beta = __expf(thread_m - new_m);        
+			T beta = (new_m == -INFINITY) ? 0.0f : __expf(thread_m - new_m);    // guard 4
+
+			if (lane == 0) {
+				ShAlpha[warp] = alpha;
+				ShBeta[warp] = beta;
+			}
+
+
+
+			//this is the numerator minus the max we've found so far for the tile (e^value - max)
+			//normally we would divide this by the denominator, but not done calculating it yet, and we can 
+			//do it at the end anyway
+			T p = (score == -INFINITY) ? 0.0f : __expf(score - thread_m);   // guard 5
+
+			ShP[warp][lane] = p;
+
+			__syncthreads();  //wait for all threads to get done populating ShP
+
+			//Use all 256 threads in a block to calcuate the 512 sums to be used to populate ShAcc
+			//each thread will end up doing two values
+			//e.g. thread 0 will be reponsible for:
+			//    row 0,col 0 and
+			//    row 4,col 0 
+			// scale the previously stored value and then add the new contribution
+
+			for (int idx = tid; idx < BLOCK_M * DMAX; idx += blockDim.x) {
+
+				int row = idx / DMAX;
+				int col = idx % DMAX;
+
+				T sum = 0.0f;
+				for (int k = 0; k < TILE_N; k++) {
+					sum += ShP[row][k] * ShV[k][col];
+				}
+
+				ShAcc[row][col] = ShAcc[row][col] * ShAlpha[row] + sum * ShBeta[row];
+
+			}
+
+			__syncthreads();
+
+
+		}
+
+
+		//Done with all tiles ShAcc should have the correct value in it now.
+		for (int idx = tid; idx < BLOCK_M * DMAX; idx += blockDim.x) {
+
+			int row = idx / DMAX;
+			int col = idx % DMAX;
+			int globalrow = blockIdx.x * BLOCK_M + row;
+
+			if (globalrow < Tseq) {
+
+				size_t out_idx =
+					batch * Tseq * C +
+					globalrow * C +
+					head * DMAX + col;
+
+				O[out_idx] = ShAcc[row][col] / ShL[row];
+			}
+
+		}
+
+
+
+	}
+
+
+
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//
-	//  Function
+	//  Function cuda_flash_block - Current production call
 	//
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2266,8 +2553,10 @@ namespace Inferno {
 			(unsigned int)H,
 			(unsigned int)B
 		);
-
+		//flash_attention_bigdaddy_forward_block_kernel2
+		//cuda_my_fused_flash_attention_kernel
 		flash_attention_bigdaddy_forward_block_kernel2<T, BLOCK_M, TILE_N, DMAX>
+		//flash_attention_bigdaddy_forward_block_kernel2<T, BLOCK_M, TILE_N, DMAX>
 			<< <grid, THREADS >> > (
 				qkvptr,
 				optr,
@@ -2277,8 +2566,7 @@ namespace Inferno {
 				H,
 				D,
 				causal
-				);
-
+				);		
 		cudaError_t err = cudaGetLastError();
 
 		if (err != cudaSuccess) {
@@ -2293,6 +2581,62 @@ namespace Inferno {
 	template void cuda_flash_block<float>(const float*, float*, size_t, size_t, size_t, size_t, size_t, bool);
 	template void cuda_flash_block<double>(const double*, double*, size_t, size_t, size_t, size_t, size_t, bool);
 
+
+	
+
+	template <typename T>
+	void cuda_flash_block_my_version_check(
+		const T* qkvptr,
+		T* optr,
+		size_t B,
+		size_t Tseq,
+		size_t C,
+		size_t H,
+		size_t D,
+		bool causal
+	) {
+		constexpr int BLOCK_M = 8;
+		constexpr int TILE_N = 32;
+		constexpr int DMAX = 64;
+		constexpr int THREADS = 256;
+
+		if (D != DMAX) {
+			std::cerr << "cuda_flash_block currently expects D == 64" << std::endl;
+			std::exit(1);
+		}
+
+		dim3 grid(
+			(unsigned int)((Tseq + BLOCK_M - 1) / BLOCK_M),
+			(unsigned int)H,
+			(unsigned int)B
+		);
+		//flash_attention_bigdaddy_forward_block_kernel2
+		//cuda_my_fused_flash_attention_kernel
+		cuda_my_fused_flash_attention_kernel<T, BLOCK_M, TILE_N, DMAX>
+			//flash_attention_bigdaddy_forward_block_kernel2<T, BLOCK_M, TILE_N, DMAX>
+			<< <grid, THREADS >> > (
+				qkvptr,
+				optr,
+				B,
+				Tseq,
+				C,
+				H,
+				D,
+				causal
+				);
+		cudaError_t err = cudaGetLastError();
+
+		if (err != cudaSuccess) {
+			std::cerr << "flash_attention_bigdaddy_forward_block_kernel launch failed: "
+				<< cudaGetErrorString(err) << std::endl;
+			std::exit(1);
+		}
+
+		//cudaDeviceSynchronize();
+	}
+
+	template void cuda_flash_block_my_version_check<float>(const float*, float*, size_t, size_t, size_t, size_t, size_t, bool);
+	template void cuda_flash_block_my_version_check<double>(const double*, double*, size_t, size_t, size_t, size_t, size_t, bool);
 
 
 
@@ -2633,7 +2977,7 @@ namespace Inferno {
 		}
 	}
 
-	// flash_backward_fused_kernel.cu
+// flash_backward_fused_kernel.cu
 //
 // Memory-efficient FlashAttention backward pass.
 //
@@ -2654,7 +2998,7 @@ namespace Inferno {
 
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
-
+	//curent kernel in production
 	template<typename T, int BLOCK_M, int TILE_N, int DMAX>
 	__global__ void flash_backward_fused_kernel2(
 		const T* __restrict__ qkv,

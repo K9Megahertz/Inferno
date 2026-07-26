@@ -1,4 +1,5 @@
 #include "cudaops.h"
+#include "inferno/memmgr/memmgr.h"
 
 namespace Inferno {
 
@@ -107,11 +108,19 @@ namespace Inferno {
         size_t* d_a_strides = nullptr;
         size_t* d_b_strides = nullptr;
 
-        check_cuda(cudaMalloc(&d_a_padded, out_rank * sizeof(size_t)), "cuda_add cudaMalloc d_a_padded failed");
-        check_cuda(cudaMalloc(&d_b_padded, out_rank * sizeof(size_t)), "cuda_add cudaMalloc d_b_padded failed");
-        check_cuda(cudaMalloc(&d_out_shape, out_rank * sizeof(size_t)), "cuda_add cudaMalloc d_out_shape failed");
-        check_cuda(cudaMalloc(&d_a_strides, out_rank * sizeof(size_t)), "cuda_add cudaMalloc d_a_strides failed");
-        check_cuda(cudaMalloc(&d_b_strides, out_rank * sizeof(size_t)), "cuda_add cudaMalloc d_b_strides failed");
+        //check_cuda(cudaMalloc(&d_a_padded, out_rank * sizeof(size_t)), "cuda_add cudaMalloc d_a_padded failed");
+        //check_cuda(cudaMalloc(&d_b_padded, out_rank * sizeof(size_t)), "cuda_add cudaMalloc d_b_padded failed");
+        //check_cuda(cudaMalloc(&d_out_shape, out_rank * sizeof(size_t)), "cuda_add cudaMalloc d_out_shape failed");
+        //check_cuda(cudaMalloc(&d_a_strides, out_rank * sizeof(size_t)), "cuda_add cudaMalloc d_a_strides failed");
+        //check_cuda(cudaMalloc(&d_b_strides, out_rank * sizeof(size_t)), "cuda_add cudaMalloc d_b_strides failed");
+
+        d_a_padded = static_cast<size_t*>(CachingAllocator::instance().allocate(out_rank * sizeof(size_t)));
+        d_b_padded = static_cast<size_t*>(CachingAllocator::instance().allocate(out_rank * sizeof(size_t)));
+        d_out_shape = static_cast<size_t*>(CachingAllocator::instance().allocate(out_rank * sizeof(size_t)));
+        d_a_strides = static_cast<size_t*>(CachingAllocator::instance().allocate(out_rank * sizeof(size_t)));
+        d_b_strides = static_cast<size_t*>(CachingAllocator::instance().allocate(out_rank * sizeof(size_t)));
+
+
 
         check_cuda(cudaMemcpy(d_a_padded, a_padded_shape.data(), out_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_add cudaMemcpy d_a_padded failed");
         check_cuda(cudaMemcpy(d_b_padded, b_padded_shape.data(), out_rank * sizeof(size_t), cudaMemcpyHostToDevice), "cuda_add cudaMemcpy d_b_padded failed");
@@ -139,11 +148,17 @@ namespace Inferno {
 
         check_cuda(cudaGetLastError(), "cuda_add kernel launch failed");        
 
-        check_cuda(cudaFree(d_a_padded), "cuda_add cudaFree d_a_padded failed");
-        check_cuda(cudaFree(d_b_padded), "cuda_add cudaFree d_b_padded failed");
-        check_cuda(cudaFree(d_out_shape), "cuda_add cudaFree d_out_shape failed");
-        check_cuda(cudaFree(d_a_strides), "cuda_add cudaFree d_a_strides failed");
-        check_cuda(cudaFree(d_b_strides), "cuda_add cudaFree d_b_strides failed");
+        //check_cuda(cudaFree(d_a_padded), "cuda_add cudaFree d_a_padded failed");
+        //check_cuda(cudaFree(d_b_padded), "cuda_add cudaFree d_b_padded failed");
+        //check_cuda(cudaFree(d_out_shape), "cuda_add cudaFree d_out_shape failed");
+        //check_cuda(cudaFree(d_a_strides), "cuda_add cudaFree d_a_strides failed");
+        //check_cuda(cudaFree(d_b_strides), "cuda_add cudaFree d_b_strides failed");
+
+        CachingAllocator::instance().deallocate(d_a_padded);
+        CachingAllocator::instance().deallocate(d_b_padded);
+        CachingAllocator::instance().deallocate(d_out_shape);
+        CachingAllocator::instance().deallocate(d_a_strides);
+        CachingAllocator::instance().deallocate(d_b_strides);
     }
 
 

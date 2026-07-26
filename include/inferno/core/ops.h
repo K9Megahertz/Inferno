@@ -20,6 +20,7 @@ namespace Inferno {
 	Tensor masked_fill(const Tensor& input, const Tensor& mask, float value);
 	Tensor flash_attention_simple_forward(const Tensor& Q, const Tensor& K, const Tensor& V, bool causal);
 	Tensor flash_attention_bigdaddy_forward(const Tensor& qkv, size_t num_heads, bool causal);
+	Tensor flash_attention_bigdaddy_forward_my_version_check (const Tensor& qkv, size_t num_heads, bool causal);
 
 
 	

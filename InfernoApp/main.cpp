@@ -103,888 +103,6 @@ public:
 
 };
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//  Class MultiHeadAttention
-//
-//
-//
-//
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-/*class MultiHeadAttention : public Inferno::Module {
-public:
-	MultiHeadAttention(size_t embed_dim, size_t num_heads) :
-		m_embed_dim(embed_dim),
-		m_num_heads(num_heads),
-		m_head_dim(embed_dim / num_heads),
-		W_out(embed_dim, embed_dim)
-	{
-
-		Wq_layers.reserve(m_num_heads);
-		Wk_layers.reserve(m_num_heads);
-		Wv_layers.reserve(m_num_heads);
-
-		for (size_t i = 0; i < m_num_heads; ++i) {
-			Wq_layers.emplace_back(m_embed_dim, m_head_dim);
-			Wk_layers.emplace_back(m_embed_dim, m_head_dim);
-			Wv_layers.emplace_back(m_embed_dim, m_head_dim);
-
-			register_module(&Wq_layers.back());
-			register_module(&Wk_layers.back());
-			register_module(&Wv_layers.back());
-		}
-		
-		register_module(&W_out); // final output projection after concatenation		
-
-	}
-
-	Inferno::Tensor forward(Inferno::Tensor& x) override {
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Multihead Attention forward" << std::endl;
-		std::vector<Inferno::Tensor> heads;
-
-
-		for (int i = 0; i < m_num_heads; ++i) {
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Head: " << i << std::endl;
-
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "MHA - Q forward" << std::endl;
-			auto q = Wq_layers[i].forward(x);
-
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "MHA - K forward" << std::endl;
-			auto k = Wk_layers[i].forward(x);
-
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "MHA - V forward" << std::endl;
-			auto v = Wv_layers[i].forward(x);
-
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "MHA - Attn scores forward - transpose -> matmul -> Divide" << std::endl;
-			auto attn_scores = Inferno::matmul(q, k.transpose(-1, -2), "QK^T") / std::sqrt(static_cast<float>(m_head_dim));
-
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "MHA - softmax forward" << std::endl;
-			auto attn_probs = Inferno::Softmax(attn_scores, -1);
-
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "MHA - matmul forward - Attn x V" << std::endl;
-			auto head = Inferno::matmul(attn_probs, v, "attn@V");
-
-			heads.push_back(head);
-		}
-
-		// concatenate heads along embedding dim
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "MHA - concat forward" << std::endl;
-		Inferno::Tensor concat = Inferno::concat(heads, -1);
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "MHA - Linear forward" << std::endl;
-		return W_out.forward(concat);
-	}
-
-private:
-	size_t m_embed_dim;
-	size_t m_num_heads;
-	size_t m_head_dim;
-
-	std::vector<Inferno::Linear> Wq_layers;
-	std::vector<Inferno::Linear> Wk_layers;
-	std::vector<Inferno::Linear> Wv_layers;
-	Inferno::Linear W_out;
-};*/
-
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//  Class MultiHeadAttentionFast
-//
-//
-//
-//
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-class MultiHeadAttentionFast : public Inferno::Module {
-public:
-	MultiHeadAttentionFast(size_t embed_dim, size_t num_heads) :
-		m_embed_dim(embed_dim),
-		m_num_heads(num_heads),
-		m_head_dim(embed_dim / num_heads),
-		W_out(embed_dim, embed_dim),
-		Wqkv_layer(embed_dim, embed_dim * 3)
-	{
-
-		register_module("Wqkv", &Wqkv_layer);
-		register_module("W_out", &W_out); // final output projection after concatenation		
-
-	}
-
-	Inferno::Tensor forward(Inferno::Tensor& x) override {
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Multihead Attention forward" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		auto shape = x.shape();
-
-		if (shape.size() != 3) {
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_ERROR) << "MultiHeadAttentionFast expects [B, T, C]" << std::endl;
-			exit(1);
-		}
-
-		size_t B = shape[0];
-		size_t T = shape[1];
-		size_t C = shape[2];
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Wqkv_layer weights and bias" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << Wqkv_layer << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		auto qkv = Wqkv_layer.forward(x);
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Wqkv_layer after linear" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << qkv << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		Inferno::Tensor q = qkv.slice(2, 0, m_embed_dim - 1);                  // [B, T, C]
-		Inferno::Tensor k = qkv.slice(2, m_embed_dim, 2 * m_embed_dim - 1);    // [B, T, C]
-		Inferno::Tensor v = qkv.slice(2, 2 * m_embed_dim, 3 * m_embed_dim - 1);// [B, T, C]
-
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Q after slice" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << q << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "K after slice" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << k << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "V after slice" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << v << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		q = q.contiguous();
-		k = k.contiguous();
-		v = v.contiguous();
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Q after contiguous" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << q << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "K after contiguous" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << k << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "V after contiguous" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << v << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		q = q.reshape({ B, T, m_num_heads, m_head_dim });           // [B, T, H, D]
-		k = k.reshape({ B, T, m_num_heads, m_head_dim });
-		v = v.reshape({ B, T, m_num_heads, m_head_dim });
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Q after reshape" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << q << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "K after reshape" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << k << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "V after reshape" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << v << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		q = q.transpose(1, 2);                                    // [B, H, T, D]
-		k = k.transpose(1, 2);                                    // [B, H, T, D]
-		v = v.transpose(1, 2);                                    // [B, H, T, D]
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Q after transpose" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << q << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "K after transpose" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << k << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "V after transpose" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << v << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Transposing K for matmul with Q" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << k << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		Inferno::Tensor kt = k.transpose(-1, -2);                          // [B, H, D, T]
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "K after transpose" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << k << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-
-		Inferno::Tensor scores = matmul(q, kt, "QK^T");                             // [B, H, T, T]
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "attn scores after matmul(q, kt)" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << scores << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		float scale = 1.0f / std::sqrt((float)m_head_dim);
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "calculating scaled attn scores using scale: " << scale << std::endl;		
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-		
-		scores = scores * scale;
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "scores after scaling" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << scores << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Creating mask for attention" << std::endl;
-
-		Inferno::Tensor ones(Inferno::DType::Int32, std::vector<int>(T * T, 1.0f), { 1, 1, T, T }, "causal_mask_ones", scores.device());
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Created Tensor with all 1's to serve as base for mask" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << ones << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		Inferno::Tensor mask = Inferno::triu(ones, 1);		
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Created triu mask" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << mask << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		// mask out disallowed positions before softmax
-		scores = Inferno::masked_fill(scores, mask, -1e9f);
-		
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "scores after applying mask" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << scores << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-
-		Inferno::Tensor attn = Inferno::Softmax(scores, -1);                         // [B, H, T, T]
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "attn scores after softmax" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << attn << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		Inferno::Tensor y = matmul(attn, v, "attn@V");                                // [B, H, T, D]
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "scores after matmul(attn, v)" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << y << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		y = y.transpose(1, 2);                                    // [B, T, H, D]
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "y = y.transpose(1, 2); " << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << y << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		y = y.contiguous();
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "y = y.contiguous(); " << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << y << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		y = y.reshape({ B, T, m_embed_dim });                       // [B, T, C]
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "y = y.reshape({ B, T, m_embed_dim }); " << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << y << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "W_out weights and bias" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << W_out << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		y = W_out.forward(y);                                   // [B, T, C]
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "After Linear W_out" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << y << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		return y;
-	}
-
-private:
-	size_t m_embed_dim;
-	size_t m_num_heads;
-	size_t m_head_dim;
-
-	Inferno::Linear Wqkv_layer;
-	Inferno::Linear W_out;
-};
-
-
-
-class MultiHeadAttentionFast2 : public Inferno::Module {
-public:
-	MultiHeadAttentionFast2(size_t embed_dim, size_t num_heads) :
-		m_embed_dim(embed_dim),
-		m_num_heads(num_heads),
-		m_head_dim(embed_dim / num_heads),
-		W_out(embed_dim, embed_dim),
-		Wqkv_layer(embed_dim, embed_dim * 3),
-		m_cached_T(0)
-	{
-		if (embed_dim % num_heads != 0) {
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_ERROR)
-				<< "MultiHeadAttentionFast2: embed_dim must be divisible by num_heads" << std::endl;
-			exit(1);
-		}
-
-		register_module("Wqkv", &Wqkv_layer);
-		register_module("W_out", &W_out);
-	}
-
-	Inferno::Tensor forward(Inferno::Tensor& x) override {
-
-		auto shape = x.shape();
-
-		if (shape.size() != 3) {
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_ERROR)
-				<< "MultiHeadAttentionFast2 expects input of shape [B, T, C]" << std::endl;
-			exit(1);
-		}
-
-		const size_t B = shape[0];
-		const size_t T = shape[1];
-		const size_t C = shape[2];
-
-		if (C != m_embed_dim) {
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_ERROR)
-				<< "MultiHeadAttentionFast2 expected embed_dim = " << m_embed_dim
-				<< " but got C = " << C << std::endl;
-			exit(1);
-		}
-
-		// [B, T, 3C]
-		Inferno::Tensor qkv = Wqkv_layer.forward(x);
-
-		// Reshape once instead of slicing q/k/v first.
-		// [B, T, 3, H, D]
-		qkv = qkv.reshape({ B, T, 3, m_num_heads, m_head_dim });
-
-		// Pull out q/k/v as views.
-		// These slice calls assume inclusive end indices like your current code.
-		Inferno::Tensor q = qkv.slice(2, 0, 0);  // [B, T, 1, H, D]
-		Inferno::Tensor k = qkv.slice(2, 1, 1);  // [B, T, 1, H, D]
-		Inferno::Tensor v = qkv.slice(2, 2, 2);  // [B, T, 1, H, D]
-
-		// Remove the singleton "qkv selector" dimension.
-		// [B, T, H, D]
-		q = q.reshape({ B, T, m_num_heads, m_head_dim });
-		k = k.reshape({ B, T, m_num_heads, m_head_dim });
-		v = v.reshape({ B, T, m_num_heads, m_head_dim });
-
-		// Move heads before sequence:
-		// [B, H, T, D]
-		q = q.transpose(1, 2);
-		k = k.transpose(1, 2);
-		v = v.transpose(1, 2);
-
-		// [B, H, D, T]
-		Inferno::Tensor kt = k.transpose(-1, -2);
-
-		// [B, H, T, T]
-		Inferno::Tensor scores = matmul(q, kt, "QK^T");
-
-		const float scale = 1.0f / std::sqrt(static_cast<float>(m_head_dim));
-		scores = scores * scale;
-
-		const Inferno::Tensor& mask = get_or_build_causal_mask(T, scores.device());
-
-		// mask shape is [1, 1, T, T], so it broadcasts over B and H
-		scores = Inferno::masked_fill(scores, mask, -1e9f);
-
-		// [B, H, T, T]
-		Inferno::Tensor attn = Inferno::Softmax(scores, -1);
-
-		// [B, H, T, D]
-		Inferno::Tensor y = matmul(attn, v, "attn@V");
-
-		// [B, T, H, D]
-		y = y.transpose(1, 2);
-
-		// Flatten heads back into embedding dim.
-		// This contiguous() is usually the important one to keep before reshape.
-		y = y.contiguous();
-		y = y.reshape({ B, T, m_embed_dim });
-
-		// Final projection: [B, T, C]
-		y = W_out.forward(y);
-
-		return y;
-	}
-
-private:
-	size_t m_embed_dim;
-	size_t m_num_heads;
-	size_t m_head_dim;
-
-	Inferno::Linear Wqkv_layer;
-	Inferno::Linear W_out;
-
-	// Cached causal mask
-	Inferno::Tensor m_cached_mask;
-	size_t m_cached_T;
-
-	const Inferno::Tensor& get_or_build_causal_mask(size_t T, const Inferno::Device& device) {
-		bool rebuild = false;
-
-		if (!GetImpl(m_cached_mask)) {
-			rebuild = true;
-		}
-		else if (m_cached_T != T) {
-			rebuild = true;
-		}
-		else if (m_cached_mask.device() != device) {
-			rebuild = true;
-		}
-
-		if (rebuild) {
-			std::vector<int> ones_data(T * T, 1);
-
-			Inferno::Tensor ones(
-				Inferno::DType::Int32,
-				ones_data,
-				{ 1, 1, T, T },
-				"causal_mask_ones",
-				device
-			);
-
-			m_cached_mask = Inferno::triu(ones, 1);
-			m_cached_T = T;
-		}
-
-		return m_cached_mask;
-	}
-};
-
-
-class MultiHeadAttentionFast3 : public Inferno::Module {
-public:
-	MultiHeadAttentionFast3(size_t embed_dim, size_t num_heads) :
-		m_embed_dim(embed_dim),
-		m_num_heads(num_heads),
-		m_head_dim(embed_dim / num_heads),
-		W_out(embed_dim, embed_dim),
-		Wqkv_layer(embed_dim, embed_dim * 3),
-		m_cached_T(0)
-	{
-		if (embed_dim % num_heads != 0) {
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_ERROR)
-				<< "MultiHeadAttentionFast2: embed_dim must be divisible by num_heads" << std::endl;
-			exit(1);
-		}
-
-		register_module("Wqkv", &Wqkv_layer);
-		register_module("W_out", &W_out);
-	}
-
-	Inferno::Tensor forward(Inferno::Tensor& x) override {
-
-		auto shape = x.shape();
-
-		if (shape.size() != 3) {
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_ERROR)
-				<< "MultiHeadAttentionFast2 expects [B, T, C]" << std::endl;
-			exit(1);
-		}
-
-		const size_t B = shape[0];
-		const size_t T = shape[1];
-		const size_t C = shape[2];
-
-		if (C != m_embed_dim) {
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_ERROR)
-				<< "MultiHeadAttentionFast2 expected embed_dim = " << m_embed_dim
-				<< " but got " << C << std::endl;
-			exit(1);
-		}
-
-		// [B, T, 3C]
-		Inferno::Tensor qkv = Wqkv_layer.forward(x);
-
-		// Keep this part compatible with your current reshape rules.
-		Inferno::Tensor q = qkv.slice(2, 0, m_embed_dim - 1);                   // [B, T, C]
-		Inferno::Tensor k = qkv.slice(2, m_embed_dim, 2 * m_embed_dim - 1);     // [B, T, C]
-		Inferno::Tensor v = qkv.slice(2, 2 * m_embed_dim, 3 * m_embed_dim - 1); // [B, T, C]
-
-		// Needed because your reshape currently only supports contiguous tensors.
-		q = q.contiguous();
-		k = k.contiguous();
-		v = v.contiguous();
-
-		// [B, T, H, D]
-		q = q.reshape({ B, T, m_num_heads, m_head_dim });
-		k = k.reshape({ B, T, m_num_heads, m_head_dim });
-		v = v.reshape({ B, T, m_num_heads, m_head_dim });
-
-		// [B, H, T, D]
-		q = q.transpose(1, 2);
-		k = k.transpose(1, 2);
-		v = v.transpose(1, 2);
-
-		// [B, H, D, T]
-		Inferno::Tensor kt = k.transpose(-1, -2);
-
-		// [B, H, T, T]
-		Inferno::Tensor scores = matmul(q, kt, "QK^T");
-
-		const float scale = 1.0f / std::sqrt(static_cast<float>(m_head_dim));
-		scores = scores * scale;
-
-		const Inferno::Tensor& mask = get_or_build_causal_mask(T, scores.device());
-		scores = Inferno::masked_fill(scores, mask, -1e9f);
-
-		// [B, H, T, T]
-		Inferno::Tensor attn = Inferno::Softmax(scores, -1);
-
-		// [B, H, T, D]
-		Inferno::Tensor y = matmul(attn, v, "attn@V");
-
-		// [B, T, H, D]
-		y = y.transpose(1, 2);
-
-		// This contiguous is still the important one before flattening heads.
-		y = y.contiguous();
-		y = y.reshape({ B, T, m_embed_dim });
-
-		// [B, T, C]
-		y = W_out.forward(y);
-
-		return y;
-	}
-
-private:
-	size_t m_embed_dim;
-	size_t m_num_heads;
-	size_t m_head_dim;
-
-	Inferno::Linear Wqkv_layer;
-	Inferno::Linear W_out;
-
-	Inferno::Tensor m_cached_mask;
-	size_t m_cached_T;
-
-	const Inferno::Tensor& get_or_build_causal_mask(size_t T, const Inferno::Device& device) {
-		bool rebuild = false;
-
-		auto impl = GetImpl(m_cached_mask);
-		if (!impl) {
-			rebuild = true;
-		}
-		else if (m_cached_T != T) {
-			rebuild = true;
-		}
-		else if (m_cached_mask.device() != device) {
-			rebuild = true;
-		}
-
-		if (rebuild) {
-			std::vector<int> ones_data(T * T, 1);
-
-			Inferno::Tensor ones(
-				Inferno::DType::Int32,
-				ones_data,
-				{ 1, 1, T, T },
-				"causal_mask_ones",
-				device
-			);
-
-			m_cached_mask = Inferno::triu(ones, 1);
-			m_cached_T = T;
-		}
-
-		return m_cached_mask;
-	}
-};
-
-
-class MultiHeadAttentionFast4 : public Inferno::Module {
-public:
-	MultiHeadAttentionFast4(size_t embed_dim, size_t num_heads) :
-		m_embed_dim(embed_dim),
-		m_num_heads(num_heads),
-		m_head_dim(embed_dim / num_heads),
-		W_out(embed_dim, embed_dim),
-		Wqkv_layer(embed_dim, embed_dim * 3),
-		m_cached_T(0)
-	{
-		if (embed_dim % num_heads != 0) {
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_ERROR)
-				<< "MultiHeadAttentionFast4: embed_dim must be divisible by num_heads" << std::endl;
-			exit(1);
-		}
-
-		register_module("Wqkv", &Wqkv_layer);
-		register_module("W_out", &W_out);
-	}
-
-	Inferno::Tensor forward(Inferno::Tensor& x) override {
-
-		auto shape = x.shape();
-
-		if (shape.size() != 3) {
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_ERROR)
-				<< "MultiHeadAttentionFast4 expects [B, T, C]" << std::endl;
-			exit(1);
-		}
-
-		const size_t B = shape[0];
-		const size_t T = shape[1];
-		const size_t C = shape[2];
-
-		if (C != m_embed_dim) {
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_ERROR) << "MultiHeadAttentionFast4 expected embed_dim = " << m_embed_dim << " but got " << C << std::endl;
-			exit(1);
-		}
-
-		// [B, T, 3C]
-		Inferno::Tensor qkv = Wqkv_layer.forward(x);
-		if (laptimingenabled) t1.lap("Wqkv forward");
-
-		// [B, T, C]
-		Inferno::Tensor q = qkv.slice(2, 0, m_embed_dim - 1);
-		Inferno::Tensor k = qkv.slice(2, m_embed_dim, 2 * m_embed_dim - 1);
-		Inferno::Tensor v = qkv.slice(2, 2 * m_embed_dim, 3 * m_embed_dim - 1);
-
-		// Make each projection contiguous before reshape
-		q = q.contiguous();
-		k = k.contiguous();
-		v = v.contiguous();
-
-		// [B, T, H, D]
-		q = q.reshape({ B, T, m_num_heads, m_head_dim });
-		k = k.reshape({ B, T, m_num_heads, m_head_dim });
-		v = v.reshape({ B, T, m_num_heads, m_head_dim });
-
-		// [B, H, T, D]
-		// Important: materialize these layouts so batched matmul has a clean stride pattern
-		q = q.transpose(1, 2).contiguous();
-		k = k.transpose(1, 2).contiguous();
-		v = v.transpose(1, 2).contiguous();
-
-		// [B, H, D, T]
-		Inferno::Tensor kt = k.transpose(-1, -2).contiguous();
-
-		// [B, H, T, T]
-		Inferno::Tensor scores = matmul(q, kt, "QK ^ T");
-		if (laptimingenabled) t1.lap("matmul QK ^T");
-
-		const float scale = 1.0f / std::sqrt(static_cast<float>(m_head_dim));
-		scores = scores * scale;
-		if (laptimingenabled) t1.lap("scores = scores * scale");
-
-		Inferno::Tensor mask = get_or_build_causal_mask(T, scores.device());		
-		scores = Inferno::masked_fill(scores, mask, -1e9f);
-		if (laptimingenabled) t1.lap("masked fill");
-		// [B, H, T, T]
-		Inferno::Tensor attn = Inferno::Softmax(scores, -1).contiguous();
-
-		// [B, H, T, D]
-		Inferno::Tensor y = matmul(attn, v, "attn@V");
-		if (laptimingenabled) t1.lap("attn@V");
-
-		// [B, T, H, D]
-		y = y.transpose(1, 2).contiguous();
-
-		// [B, T, C]
-		y = y.reshape({ B, T, m_embed_dim });
-
-		// [B, T, C]
-		y = W_out.forward(y);
-		if (laptimingenabled) t1.lap("W_out forward");
-
-		return y;
-	}
-
-private:
-	size_t m_embed_dim;
-	size_t m_num_heads;
-	size_t m_head_dim;
-
-	Inferno::Linear Wqkv_layer;
-	Inferno::Linear W_out;
-
-	Inferno::Tensor m_cached_mask;
-	size_t m_cached_T;
-
-	const Inferno::Tensor& get_or_build_causal_mask(size_t T, const Inferno::Device& device) {
-		bool rebuild = false;
-
-		auto impl = GetImpl(m_cached_mask);
-		if (!impl) {
-			rebuild = true;
-		}
-		else if (m_cached_T != T) {
-			rebuild = true;
-		}
-		else if (m_cached_mask.device() != device) {
-			rebuild = true;
-		}
-
-		if (rebuild) {
-			std::vector<int> ones_data(T * T, 1);
-
-			Inferno::Tensor ones(
-				Inferno::DType::Int32,
-				ones_data,
-				{ 1, 1, T, T },
-				"causal_mask_ones",
-				device
-			);
-
-			m_cached_mask = Inferno::triu(ones, 1);
-			m_cached_T = T;
-		}
-
-		return m_cached_mask;
-	}
-};
-
-
-
-class MultiHeadAttentionFast5 : public Inferno::Module {
-public:
-	MultiHeadAttentionFast5(size_t embed_dim, size_t num_heads) :
-		m_embed_dim(embed_dim),
-		m_num_heads(num_heads),
-		m_head_dim(embed_dim / num_heads),
-		W_out(embed_dim, embed_dim),
-		Wqkv_layer(embed_dim, embed_dim * 3)
-	{
-		if (embed_dim % num_heads != 0) {
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_ERROR)
-				<< "MultiHeadAttentionFast5: embed_dim must be divisible by num_heads" << std::endl;
-			exit(1);
-		}
-
-		register_module("Wqkv", &Wqkv_layer);
-		register_module("W_out", &W_out);
-	}
-
-	Inferno::Tensor forward(Inferno::Tensor& x) override {
-
-		std::vector<size_t> shape = x.shape();
-
-		if (shape.size() != 3) {
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_ERROR) << "MultiHeadAttentionFast5 expects [B, T, C]" << std::endl;
-			exit(1);
-		}
-
-		const size_t B = shape[0];
-		const size_t T = shape[1];
-		const size_t C = shape[2];
-
-		if (C != m_embed_dim) {
-			logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_ERROR) << "MultiHeadAttentionFast5 expected embed_dim = " << m_embed_dim << " but got " << C << std::endl;
-			exit(1);
-		}
-
-		// [B, T, 3C]
-		Inferno::Tensor qkv = Wqkv_layer.forward(x);
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "qkv after Wqkv_layer.forward(x)" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << qkv << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		// [B, T, C]
-		Inferno::Tensor q = qkv.slice(2, 0, m_embed_dim - 1);
-		Inferno::Tensor k = qkv.slice(2, m_embed_dim, 2 * m_embed_dim - 1);
-		Inferno::Tensor v = qkv.slice(2, 2 * m_embed_dim, 3 * m_embed_dim - 1);
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "q after slice" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << q << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "k after slice" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << k << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "v after slice" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << v << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		q = q.contiguous();
-		k = k.contiguous();
-		v = v.contiguous();
-
-		// [B, T, H, D]
-		q = q.reshape({ B, T, m_num_heads, m_head_dim });
-		k = k.reshape({ B, T, m_num_heads, m_head_dim });
-		v = v.reshape({ B, T, m_num_heads, m_head_dim });
-
-		// [B, H, T, D]
-		q = q.transpose(1, 2).contiguous();
-		k = k.transpose(1, 2).contiguous();
-		v = v.transpose(1, 2).contiguous();
-
-		// [B, H, T, D]
-		//
-		// This replaces:
-		//
-		// kt = k.transpose(-1, -2).contiguous();
-		// scores = matmul(q, kt);
-		// scores = scores * scale;
-		// scores = masked_fill(scores, mask, -1e9f);
-		// attn = Softmax(scores, -1).contiguous();
-		// y = matmul(attn, v);
-		//
-		Inferno::Tensor y = Inferno::flash_attention_simple_forward(q, k, v, true);
-		if (laptimingenabled) t1.lap("flash_attention");
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "y after flash_attention" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << y << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		// [B, T, H, D]
-		y = y.transpose(1, 2).contiguous();
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "y after transpose" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << y << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		// [B, T, C]
-		y = y.reshape({ B, T, m_embed_dim });
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "y after reshape" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << y << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-		// [B, T, C]
-		y = W_out.forward(y);
-		if (laptimingenabled) t1.lap("W_out forward");
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "W_out weights and biases" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << W_out << std::endl;		
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-
-
-
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "y after  W_out.forward(y)" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << y << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
-		
-		
-		return y;
-	}
-
-//private:
-	size_t m_embed_dim;
-	size_t m_num_heads;
-	size_t m_head_dim;
-
-	Inferno::Linear W_out;
-	Inferno::Linear Wqkv_layer;
-};
 
 
 class MultiHeadAttentionFast6 : public Inferno::Module {
@@ -1039,7 +157,8 @@ public:
 		// attn = Softmax(scores, -1).contiguous();
 		// y = matmul(attn, v);
 		//
-		Inferno::Tensor y = Inferno::flash_attention_bigdaddy_forward(qkv, m_num_heads, true);
+		//Inferno::Tensor y = Inferno::flash_attention_bigdaddy_forward(qkv, m_num_heads, true);
+		Inferno::Tensor y = Inferno::flash_attention_bigdaddy_forward_my_version_check(qkv, m_num_heads, true);
 		if (laptimingenabled) t1.lap("flash_attention");
 		
 		// [B, T, C]
@@ -1217,6 +336,7 @@ public:
 
 	Inferno::Tensor forward(Inferno::Tensor& input) {
 
+		if (laptimingenabled) t1.lap("Start");
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "GPTModel forward" << std::endl;
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
@@ -1228,7 +348,7 @@ public:
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << emb1 << std::endl;
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
-
+		
 		Inferno::Tensor x = emb1.forward(input);
 		if (laptimingenabled) t1.lap("Embedding forward");
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "After embedding layer" << std::endl;
@@ -1306,6 +426,19 @@ public:
 };
 
 
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//  Function save_checkpoint
+//
+//
+//
+//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void save_checkpoint(Inferno::Module model,Inferno::OptimizerAdamW optimizer, size_t step, size_t total_steps) {
 	logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Writing Checkpoint" << std::endl;
 	Inferno::Checkpoint chkpt;
@@ -1322,7 +455,7 @@ void save_checkpoint(Inferno::Module model,Inferno::OptimizerAdamW optimizer, si
 
 
 	//write out one with step number
-	if (step % 250 == 0) {
+	if (step % 1000 == 0) {
 		oss << "checkpoints\\checkpoint_"
 			<< std::setw(8) << std::setfill('0') << step
 			<< ".bin";
@@ -1332,68 +465,16 @@ void save_checkpoint(Inferno::Module model,Inferno::OptimizerAdamW optimizer, si
 }
 
 
-Inferno::Tensor naive_attention_from_qkv(
-	Inferno::Tensor& qkv,
-	size_t num_heads,
-	bool causal
-) {
-	std::vector<size_t> s = qkv.shape();
-
-	size_t B = s[0];
-	size_t T = s[1];
-	size_t threeC = s[2];
-	size_t C = threeC / 3;
-	size_t D = C / num_heads;
-
-	Inferno::Tensor q = qkv.slice(2, 0, C - 1).contiguous();
-	Inferno::Tensor k = qkv.slice(2, C, 2 * C - 1).contiguous();
-	Inferno::Tensor v = qkv.slice(2, 2 * C, 3 * C - 1).contiguous();
-
-	q = q.reshape({ B, T, num_heads, D }).transpose(1, 2).contiguous();
-	k = k.reshape({ B, T, num_heads, D }).transpose(1, 2).contiguous();
-	v = v.reshape({ B, T, num_heads, D }).transpose(1, 2).contiguous();
-
-	Inferno::Tensor kt = k.transpose(-1, -2).contiguous();
-
-	Inferno::Tensor scores = matmul(q, kt, "naive_qk");
-
-	float scale = 1.0f / std::sqrt(static_cast<float>(D));
-	scores = scores * scale;
-
-	if (causal) {
-		std::vector<float> mask_data;
-
-		for (size_t b = 0; b < B; b++) {
-			for (size_t h = 0; h < num_heads; h++) {
-				for (size_t i = 0; i < T; i++) {
-					for (size_t j = 0; j < T; j++) {
-						mask_data.push_back(j > i ? 1.0f : 0.0f);
-					}
-				}
-			}
-		}
-
-		Inferno::Tensor mask(
-			Inferno::DType::Int32,
-			mask_data,
-			{ B, num_heads, T, T },
-			"mask",
-			qkv.device(),
-			false
-		);
-
-		scores = masked_fill(scores, mask, -1.0e9f);
-	}
-
-	Inferno::Tensor attn = Inferno::Softmax(scores, -1).contiguous();
-
-	Inferno::Tensor y = matmul(attn, v, "naive_attn_v");
-
-	y = y.transpose(1, 2).contiguous();
-	y = y.reshape({ B, T, C });
-
-	return y;
-}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//  Function main
+//
+//
+//
+//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 int main(int argc, char* argv[]) {
@@ -1410,148 +491,6 @@ int main(int argc, char* argv[]) {
 			ckpt_path = argv[++i];
 		}
 	}
-
-
-	/*{
-		
-
-		const size_t B = 1;
-		const size_t T = 3;
-		const size_t H = 1;
-		const size_t D = 64;
-		const size_t C = H * D;*/
-
-		//std::vector<float> qkv_data;
-		//qkv_data.reserve(B * T * 3 * C);
-
-		/*for (size_t i = 0; i < B * T * 3 * C; i++) {
-			float v = std::sin(float(i) * 0.1f) * 0.5f;
-			qkv_data.push_back(v);
-		}
-
-		std::vector<float> w_data;
-		w_data.reserve(B * T * C);
-
-		for (size_t i = 0; i < B * T * C; i++) {
-			float v = std::cos(float(i) * 0.07f) * 0.3f;
-			w_data.push_back(v);
-		}*/
-
-		/*std::vector<float> qkv_data(B * T * 3 * C, 0.0f);
-		std::vector<float> w_data(B * T * C, 0.0f);
-
-		auto Q = [&](size_t t, size_t d) -> float& {
-			return qkv_data[t * 3 * C + d];
-		};
-
-		auto K = [&](size_t t, size_t d) -> float& {
-			return qkv_data[t * 3 * C + C + d];
-		};
-
-		auto V = [&](size_t t, size_t d) -> float& {
-			return qkv_data[t * 3 * C + 2 * C + d];
-		};
-
-		auto dO = [&](size_t t, size_t d) -> float& {
-			return w_data[t * C + d];
-		};
-
-		// token 0
-		Q(0, 0) = 1.0f; Q(0, 1) = 0.0f;
-		K(0, 0) = 1.0f; K(0, 1) = 0.0f;
-		V(0, 0) = 10.0f; V(0, 1) = 20.0f;
-
-		// token 1
-		Q(1, 0) = 0.0f; Q(1, 1) = 1.0f;
-		K(1, 0) = 0.0f; K(1, 1) = 1.0f;
-		V(1, 0) = 30.0f; V(1, 1) = 40.0f;
-
-		// token 2
-		Q(2, 0) = 1.0f; Q(2, 1) = 1.0f;
-		K(2, 0) = 1.0f; K(2, 1) = 1.0f;
-		V(2, 0) = 50.0f; V(2, 1) = 60.0f;
-
-		// upstream grad only for first two output dims
-		dO(0, 0) = 1.0f; dO(0, 1) = 1.0f;
-		dO(1, 0) = 1.0f; dO(1, 1) = 1.0f;
-		dO(2, 0) = 1.0f; dO(2, 1) = 1.0f;
-
-		
-		Inferno::Tensor qkv_flash(
-			Inferno::DType::Float32,
-			qkv_data,
-			{ B, T, 3 * C },
-			"qkv_flash",
-			device,
-			true
-		);
-
-		Inferno::Tensor qkv_naive(
-			Inferno::DType::Float32,
-			qkv_data,
-			{ B, T, 3 * C },
-			"qkv_naive",
-			device,
-			true
-		);
-
-		Inferno::Tensor w(
-			Inferno::DType::Float32,
-			w_data,
-			{ B, T, C },
-			"w",
-			device,
-			false
-		);
-
-
-		/*Inferno::Tensor x(Inferno::DType::Float32, { 1,2,3,4,5,6 }, { 2,3 }, "x", device, true);
-
-		Inferno::Tensor mask(Inferno::DType::Int32, { 0,1,0,1,0,1 }, { 2,3 }, "mask", device, false);
-
-		Inferno::Tensor y = masked_fill(x, mask, -1000.0f);
-
-		Inferno::Tensor loss = y.sum();
-
-		loss.backward();
-
-		std::cout << *x.grad() << std::endl;*/
-
-
-
-
-
-
-		/*Inferno::Tensor y_flash = Inferno::flash_attention_bigdaddy_forward(qkv_flash, H, true);
-
-		Inferno::Tensor y_naive = naive_attention_from_qkv(qkv_naive, H, true);
-
-		std::cout << "================ y_flash ================\n";
-		std::cout << y_flash << std::endl;
-
-		std::cout << "================ y_naive ================\n";
-		std::cout << y_naive << std::endl;
-
-		Inferno::Tensor loss_flash = (y_flash * w).sum();
-		Inferno::Tensor loss_naive = (y_naive * w).sum();
-
-		loss_flash.backward();
-		loss_naive.backward();
-
-		std::cout << "================ qkv_flash.grad ================\n";
-		std::cout << *qkv_flash.grad() << std::endl;
-
-		std::cout << "================ qkv_naive.grad ================\n";
-		std::cout << *qkv_naive.grad() << std::endl;
-	}
-
-
-
-
-
-	exit(1);*/
-
-
 
 
 	logger.Start("logs/inferno.txt");
@@ -1573,32 +512,6 @@ int main(int argc, char* argv[]) {
 	//Inferno::EnableLogging("test.txt");	
 
 	Inferno::RandomGenerator::initializeWithSeed(42);
-
-
-
-	//RunTests();
-
-//	Inferno::Tensor a(Inferno::DType::Float32, { -0.607237f, 0.448901f, 0.110358f, -0.072336f, -0.554881f, 0.489027f, 0.025490f, -0.068161f, -0.490913f, 0.548747f, -0.155777f, 0.127474f, -0.411033f, 0.337617f, 0.063233f, -0.092226f }, {2, 2, 4 }, "a", device, true);
-//	Inferno::Tensor b(Inferno::DType::Float32, { 0.317400f, -0.842100f, 0.559300f, -0.128700f, 0.903500f, -0.476200f, 0.241800f, 0.668900f, -0.735400f, 0.182600f, -0.591700f, 0.427300f, 0.804100f, -0.259800f, 0.613200f, -0.094500f }, { 4, 4 }, "b", device, true);
-//	Inferno::Tensor c(Inferno::DType::Float32, { 0.482100f, -0.713400f, 0.256800f, -0.905700f }, { 4 }, "c", device, true);
-
-//	Inferno::Tensor y = Inferno::matmul(a, b);
-//	std::cout << y << std::endl;
-//	y = y+c;
-//	std::cout << y << std::endl;
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1634,84 +547,24 @@ int main(int argc, char* argv[]) {
 
 
 	size_t batch_size = 8;
-	size_t steps_per_chunk = 8192;
+	
 
 	InfernoTokenizer::BPETokenizer tok;
 	tok.Initialize({ "data\\openwebtext_merges_gold.txt", "data\\openwebtext_vocab_gold.txt" });
 
-
-	//DataLoader loader("data\\openwebtext_clean3.tokens", batch_size, context_size, steps_per_chunk);
 	DataLoader2 loader("data\\openwebtext_clean_gold.tokens", batch_size, context_size);
-
-
-	
-
-
-	/*std::vector<int> data(batch_size * context_size, 0);
-	data[0] = 1;
-	Inferno::Tensor target(Inferno::DType::Int32, data, { batch_size, context_size }, "target", device);
-	Inferno::Tensor tokens(Inferno::DType::Int32, Inferno::RandomGenerator::generateRandomIntVector(batch_size * context_size, 0, vocabulary_size - 1), { batch_size, context_size }, "tokens", device);*/
-
-
-	//Inferno::Tensor tokens(Inferno::DType::Int32, { 42, 13, 1, 0, 99, 34, 23, 78, 1, 25, 22, 45, 02, 13, 67, 88 }, { 16 }, "tokens", device);
-	//Inferno::Tensor input = Inferno::Tensor(Inferno::DType::Float32, { 1, 2, 3, 4, 5, 6, 7, 8, 9, 0 }, { 10 }, "input", device);
-
-
-	//for mnist test
-	//std::vector<size_t> layers({ 784,512,256,10 });
-	//Inferno::Tensor input = Inferno::Tensor(Inferno::DType::Float32, Inferno::RandomGenerator::generateRandomFloatVector(layers[0],-0.5f,0.5f), { layers[0] }, "input", device);
-	//Inferno::Tensor target = Inferno::Tensor(Inferno::DType::Float32, { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, { 10 }, "target", device);
 
 	int checkpoint_interval = 25;
 	int total_steps = 32000;
-	int micro_steps = 32;
+	int micro_steps = 1;// 32;
 	int step = 0;
-	float lowestloss = 99;
+	float lowestloss = INFINITY;
 
-
-	//Inferno::Tensor input = Inferno::Tensor(Inferno::DType::Int32, { 0,1,1,0 }, { 2, 2 }, "input", device, true);
-	//Inferno::Tensor target = Inferno::Tensor(Inferno::DType::Int32, { 1,0,0,1 }, { 2, 2 }, "target", device, true);
-
-	RunningAverage avg(1000);
-
+	RunningAverage avg(200);
 	
 	GPTModel model(vocabulary_size, context_size, embedding_dim, numheads, numblocks);
 
-
-	/*model.emb1.m_embeddings = Inferno::Tensor(Inferno::DType::Float32, { 0.7f, 0.2f, 0.3f, 0.7f, 0.1f, 0.8f, 0.3f, 0.2f }, { 2, 4 }, "embedding", device, true);
-	
-	model.transblks[0].attn.Wqkv_layer.m_weights = Inferno::Tensor(Inferno::DType::Float32, { 0.2341f, -0.1123f,  0.0456f,  0.1789f,   -0.0678f,  0.2567f, -0.1987f,  0.0345f,    0.1456f, -0.0891f,  0.0678f, -0.1234f,
-                                                                                             -0.0567f,  0.1987f, -0.1678f,  0.0891f,    0.1456f, -0.0789f,  0.2345f, -0.1567f,   -0.0345f,  0.1678f, -0.0987f,  0.0567f,
-                                                                                              0.1789f,  0.0345f,  0.2123f, -0.1456f,   -0.1234f,  0.1890f,  0.0789f, -0.0678f,    0.1987f, -0.1678f,  0.0456f,  0.0345f,
-                                                                                             -0.0891f,  0.1234f, -0.0456f,  0.2567f,    0.0678f, -0.1987f,  0.1456f,  0.0891f,   -0.1567f,  0.0345f,  0.1789f, -0.0678f }, { 4, 12 }, "weights", device, true);
-	model.transblks[0].attn.Wqkv_layer.m_biases = Inferno::Tensor(Inferno::DType::Float32, { 0.0345f, -0.0123f, 0.0567f, -0.0234f,  0.0456f, 0.0000f, -0.0345f, 0.0123f,  -0.0456f, 0.0678f, 0.0000f, -0.0234f }, { 12 }, "biases", device, true);
-	model.transblks[0].attn.W_out.m_weights = Inferno::Tensor(Inferno::DType::Float32, { 0.3174f, -0.8421f, 0.5593f, -0.1287f, 0.9035f, -0.4762f, 0.2418f, 0.6689f,-0.7354f, 0.1826f, -0.5917f, 0.4273f,0.8041f, -0.2598f, 0.6132f, -0.0945f }, { 4, 4 }, "weights", device, true);
-	model.transblks[0].attn.W_out.m_biases = Inferno::Tensor(Inferno::DType::Float32, { 0.4821f, -0.7134f, 0.2568f, -0.9057f }, { 4 }, "biases", device, true);
-
-
-	model.transblks[0].feedforward1.m_weights = Inferno::Tensor(Inferno::DType::Float32, { 0.1325f, -0.4821f, 0.7734f, -0.2156f, -0.9043f, 0.5567f, -0.3312f, 0.1189f, 0.6721f, -0.7458f, 0.2294f, -0.5673f, 0.4410f, 0.0897f, -0.9982f, 0.3105f,
-		-0.2736f, 0.8142f, -0.6521f, 0.1933f, 0.5076f, -0.1198f, 0.2844f, -0.7765f, -0.0612f, 0.9327f, -0.4875f, 0.3651f, -0.7219f, 0.2480f, -0.1567f, 0.6014f,
-		0.3945f, -0.8423f, 0.7108f, -0.2299f, 0.1556f, 0.4782f, -0.6124f, 0.8871f, -0.3407f, 0.0625f, 0.5248f, -0.9089f, 0.2713f, -0.4441f, 0.7932f, -0.1180f,
-		0.6679f, -0.7354f, 0.2011f, -0.5896f, 0.4538f, 0.0976f, -0.9652f, 0.3227f, -0.2845f, 0.8013f, -0.6317f, 0.1742f, -0.5128f, 0.2364f, 0.9147f, -0.4072f }, { 4, 16 }, "weights", device, true);
-	model.transblks[0].feedforward1.m_biases = Inferno::Tensor(Inferno::DType::Float32, { 0.1243f, -0.5521f, 0.3417f, -0.2198f, 0.7785f, -0.6612f, 0.0954f, 0.4376f, -0.3821f, 0.5298f, -0.1476f, 0.6892f, -0.9044f, 0.2167f, -0.0735f, 0.5589f }, { 16 }, "biases", device, true);
-
-	model.transblks[0].feedforward2.m_weights = Inferno::Tensor(Inferno::DType::Float32, { 0.2154f, -0.7812f, 0.4421f, -0.1093f, 0.6638f, -0.5527f, 0.1789f, 0.3045f, -0.9211f, 0.5872f, -0.3348f, 0.7110f, -0.2486f, 0.4953f, -0.6674f, 0.1327f,
-		0.8531f, -0.4025f, 0.2197f, -0.7568f, 0.3742f, 0.6189f, -0.1456f, 0.0891f, -0.5324f, 0.7773f, -0.2985f, 0.5602f, -0.6147f, 0.2439f, 0.9812f, -0.4763f,
-		0.1248f, -0.3397f, 0.7056f, -0.8821f, 0.4683f, 0.1914f, -0.7235f, 0.3569f, -0.2076f, 0.6408f, -0.5189f, 0.2741f, 0.8327f, -0.9614f, 0.1175f, 0.5032f,
-		-0.6893f, 0.4428f, -0.1359f, 0.7981f, -0.3774f, 0.6205f, 0.2149f, -0.5562f, 0.9037f, -0.2481f, 0.4716f, -0.6670f, 0.3592f, -0.8043f, 0.5268f, 0.1124f }, { 16, 4 }, "weights", device, true);
-	model.transblks[0].feedforward2.m_biases = Inferno::Tensor(Inferno::DType::Float32, { 0.1432f, -0.5526f, 0.3387f, 0.7611f }, { 4 }, "biases", device, true);
-	
-
-
-
-
-	model.linear1.m_weights = Inferno::Tensor(Inferno::DType::Float32, { 0.4127f, -0.7351f, 0.2894f, 0.9632f, -0.1548f, 0.6783f, -0.4926f, 0.1059f}, { 4,2 }, "weights", device, true);
-	model.linear1.m_biases = Inferno::Tensor(Inferno::DType::Float32, { -0.3842f, 0.9176f }, { 2 }, "bias", device, true);
-	*/
-
 	std::optional<Inferno::Checkpoint> ckpt;
-
-	//resume = false;
 
 	if (resume) {
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << "Resuming training from: " << ckpt_path << std::endl;
@@ -1727,18 +580,16 @@ int main(int argc, char* argv[]) {
 
 	auto params = model.parameters();
 	
-	Inferno::OptimizerAdamW optimizer(model.parameters(), total_steps, 1.5e-5f, 0.9f, 0.95f, 1e-8f, 0.1f);
-	//ckpt->optimizer.lr = 3e-5f;
+	Inferno::OptimizerAdamW optimizer(model.parameters(), total_steps, 1.5e-4f, 0.9f, 0.95f, 1e-8f, 0.1f);
+
 	if (resume) {
 		optimizer.load_state_dict(ckpt->optimizer);
 	}	
 	
 
 	Inferno::CrossEntropyLoss loss_fn;
-	
 
-	
-	
+	//training loop
 	for (; step < total_steps; step++) {
 
 		float accum_loss = 0.0f;
@@ -1748,6 +599,7 @@ int main(int argc, char* argv[]) {
 
 			t1.start();
 
+			if (laptimingenabled) t1.lap("Start Load pair");
 			std::pair<Inferno::Tensor, Inferno::Tensor> pair = loader.next_batch();
 
 			Inferno::Tensor x = pair.first;
@@ -1773,15 +625,17 @@ int main(int argc, char* argv[]) {
 				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
 			}
 
-
+			if (laptimingenabled) t1.lap("Start to device");
 			x = x.to(device);
 			y = y.to(device);
-
-			//Inferno::Tensor logits = model.forward(input);
+			
+			if (laptimingenabled) t1.lap("Start Forward");
 			Inferno::Tensor logits = model.forward(x);
 
-			
+			if (laptimingenabled) t1.lap("Start loss");
 			Inferno::Tensor loss = loss_fn(logits, y);
+			if (laptimingenabled) t1.lap("loss");
+
 			loss = loss / micro_steps;
 
 			accum_loss += loss.to(Inferno::Device::cpu()).item<float>();
@@ -1789,25 +643,24 @@ int main(int argc, char* argv[]) {
 
 			std::cout << ".";
 
-			if (laptimingenabled) t1.lap("loss");
-			
+			if (laptimingenabled) t1.lap("Start backward");
 			loss.backward();
 			if (laptimingenabled) t1.lap("backward");
 
 
 		}
-		std::cout << std::endl;
+		//std::cout << std::endl;
 
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Loss" << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << accum_loss << std::endl;
-		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
+		//logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Loss" << std::endl;
+		//logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << accum_loss << std::endl;
+		//logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << std::endl;
 
-			
-		
-
+				
+		if (laptimingenabled) t1.lap("Optimizer start");
 		optimizer.step();
+		if (laptimingenabled) t1.lap("Optimizer step");
 		optimizer.zero_grad();
-
+		if (laptimingenabled) t1.lap("Zero Grad");
 
 		t1.stop();
 
@@ -1825,13 +678,10 @@ int main(int argc, char* argv[]) {
 			}
 		}
 
-		//Inferno::Tensor lossp = loss.to(Inferno::Device::cpu());		
-		//if (lossp.item<float>() < lowestloss)
-		    //lowestloss = lossp.item<float>();
+		
 		if (accum_loss < lowestloss)
 			lowestloss = accum_loss ;
-
-		//avg.add(lossp.item<float>());
+		
 		avg.add(accum_loss);
 
 		logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO)
