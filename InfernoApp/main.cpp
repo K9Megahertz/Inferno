@@ -442,7 +442,7 @@ public:
 void save_checkpoint(Inferno::Module model,Inferno::OptimizerAdamW optimizer, size_t step, size_t total_steps) {
 	logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_DEBUG) << "Writing Checkpoint" << std::endl;
 	Inferno::Checkpoint chkpt;
-	chkpt.meta = Inferno::TrainingMetadata(step, total_steps, 0, 1);
+	chkpt.meta = Inferno::TrainingMetadata(step+1, total_steps, 0, 1);
 	chkpt.model = model.state_dict();
 	chkpt.optimizer = optimizer.state_dict();
 
@@ -553,10 +553,11 @@ int main(int argc, char* argv[]) {
 	tok.Initialize({ "data\\openwebtext_merges_gold.txt", "data\\openwebtext_vocab_gold.txt" });
 
 	DataLoader2 loader("data\\openwebtext_clean_gold.tokens", batch_size, context_size);
+	//ThreadedMmapDataLoader loader("data\\openwebtext_clean_gold.tokens", batch_size, context_size);
 
 	int checkpoint_interval = 25;
 	int total_steps = 32000;
-	int micro_steps = 1;// 32;
+	int micro_steps = 32;
 	int step = 0;
 	float lowestloss = INFINITY;
 
@@ -588,7 +589,7 @@ int main(int argc, char* argv[]) {
 	
 
 	Inferno::CrossEntropyLoss loss_fn;
-
+	//std::pair<Inferno::Tensor, Inferno::Tensor> pair = loader.next_batch();
 	//training loop
 	for (; step < total_steps; step++) {
 
@@ -604,7 +605,6 @@ int main(int argc, char* argv[]) {
 
 			Inferno::Tensor x = pair.first;
 			Inferno::Tensor y = pair.second;
-
 
 			if (printtrainingtokens) {
 				auto blahx = x[0].to_vector<int>();

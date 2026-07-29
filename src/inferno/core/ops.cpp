@@ -1790,11 +1790,13 @@ namespace Inferno {
 		size_t D = C / H;
 
 		Tensor out(qkv.dtype(), { B, Tseq, C }, "flash_attention_bigdaddy_out", qkv.device());
+		Tensor l(qkv.dtype(), { B, H, Tseq }, "flash_attention_bigdaddy_l", qkv.device());
 
 		dispatchFloat(qkv.dtype(), [&](auto TagA) {
 			using AT = typename decltype(TagA)::type;
 
 			const AT* qkvptr = GetImpl(qkv)->data_as_ptr<AT>();
+			AT* lptr = GetImpl(l)->data_as_ptr<AT>();
 			AT* outptr = GetImpl(out)->data_as_ptr<AT>();
 
 			switch (qkv.device().m_type) {
@@ -1802,6 +1804,7 @@ namespace Inferno {
 				cuda_flash_block_my_version_check<AT>(
 					qkvptr,
 					outptr,
+					lptr,
 					B,
 					Tseq,
 					C,
@@ -1821,7 +1824,7 @@ namespace Inferno {
 			INFERNO_LOG_DEBUG() << "FlashAttentionBigDaddy - Making backward node" << std::endl;
 
 			// You will need a new backward node for this packed version.
-			GetImpl(out)->gradfn() = std::make_shared<FlashAttentionBigDaddyBackwardFast>(qkv, out, num_heads, causal);
+			GetImpl(out)->gradfn() = std::make_shared<FlashAttentionBigDaddyBackwardFast>(qkv, out, l, num_heads, causal);
 
 			out.set_requires_grad(true);
 		}
@@ -1831,7 +1834,7 @@ namespace Inferno {
 
 
 
-	Tensor flash_attention_bigdaddy_forward(const Tensor& qkv, size_t num_heads, bool causal) {
+	/*Tensor flash_attention_bigdaddy_forward(const Tensor& qkv, size_t num_heads, bool causal) {
 
 		std::vector<size_t> shape = qkv.shape();
 
@@ -1902,7 +1905,7 @@ namespace Inferno {
 		}
 
 		return out;
-	}
+	}*/
 
 }
 

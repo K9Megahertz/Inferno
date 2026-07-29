@@ -2,6 +2,17 @@
 #include "dataloader.h"
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//  Constructor Dataloader
+// 
+//  First version without memmapped file
+//  
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 DataLoader::DataLoader(const std::string& token_file, size_t batch_size, size_t context_size, size_t steps_per_chunk) : 
 	m_batch_size(batch_size),
 	m_context_size(context_size),
@@ -28,8 +39,6 @@ DataLoader::DataLoader(const std::string& token_file, size_t batch_size, size_t 
 
 
 void DataLoader::load_random_chunk() {
-	
-
 	
 
 	m_file.seekg(0, std::ios::end);
@@ -104,16 +113,27 @@ std::pair<Inferno::Tensor, Inferno::Tensor> DataLoader::next_batch() {
 
 
 
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//  Dataloader2
+// 
+//  Added memmapped file
+//  
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 DataLoader2::DataLoader2(const std::string& token_file, size_t batch_size, size_t context_size) :
 	m_batch_size(batch_size),
 	m_context_size(context_size),		
 	m_rng(std::random_device{}()),
 	m_file(token_file) {
-
-	
-
-
-	
 
 }
 
@@ -151,4 +171,97 @@ std::pair<Inferno::Tensor, Inferno::Tensor> DataLoader2::next_batch() {
 
 	return { x,y };
 
+}
+
+
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//  Class ThreadedMmapDataLoader
+// 
+//  Memmapped file + threaded loading
+//  
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+ThreadedMmapDataLoader::ThreadedMmapDataLoader(std::string file_path, size_t batch_size, size_t context_size, size_t max_prefetch) :
+	m_file(file_path),
+	m_batch_size(batch_size),
+	m_context_size(context_size),
+	m_max_prefetch(max_prefetch),
+	m_rng(std::random_device{}()),
+	m_queue(max_prefetch) {
+}
+
+
+ThreadedMmapDataLoader::~ThreadedMmapDataLoader() {
+	stop();
+}
+
+
+
+void ThreadedMmapDataLoader::prefetch_loop() {
+
+
+
+	while (m_running) {
+
+		std::vector<uint32_t> xvec(m_batch_size * m_context_size, 0);
+		std::vector<uint32_t> yvec(m_batch_size * m_context_size, 0);
+
+		size_t count = m_file.count_as<int32_t>();
+		int32_t* tokens = m_file.data_as_ptr<int32_t>();
+
+
+		std::uniform_int_distribution<size_t> dist(0, count - m_context_size - 1);
+
+		for (size_t b = 0; b < m_batch_size; b++) {
+			size_t start = dist(m_rng);
+
+			for (size_t t = 0; t < m_context_size; t++) {
+				size_t idx = b * m_context_size + t;
+
+				xvec[idx] = tokens[start + t];
+				yvec[idx] = tokens[start + t + 1];
+			}
+		}
+
+		Inferno::Tensor x(Inferno::DType::Int32, std::move(xvec), { m_batch_size, m_context_size }, "x_batch", Inferno::Device::cpu());
+		Inferno::Tensor y(Inferno::DType::Int32, std::move(yvec), { m_batch_size, m_context_size }, "y_batch", Inferno::Device::cpu());
+
+		// Transfer ownership to the queue (this blocks if queue is full)
+		m_queue.push({ x,y }, m_running);
+
+	}
+
+}
+
+void ThreadedMmapDataLoader::start() {
+    if (m_running) return;
+    m_running = true;
+    m_worker_thread = std::thread(&ThreadedMmapDataLoader::prefetch_loop, this);
+}
+
+void ThreadedMmapDataLoader::stop() {
+    if (!m_running) return;
+    m_running = false;
+    m_queue.clear(); // Break any blocking cv conditions
+    if (m_worker_thread.joinable()) {
+        m_worker_thread.join();
+    }
+}
+
+std::pair<Inferno::Tensor, Inferno::Tensor> ThreadedMmapDataLoader::next_batch() {
+    if (!m_running) start();
+    // Blocks instantly until the background thread populates a slot
+    return m_queue.pop(m_running);
 }

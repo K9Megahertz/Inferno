@@ -47,14 +47,16 @@ namespace Inferno {
 
 	class FlashAttentionBigDaddyBackwardFast : public Node {
 	public:
-		FlashAttentionBigDaddyBackwardFast(const Tensor& qkv, const Tensor& out, size_t num_heads, bool causal);
+		FlashAttentionBigDaddyBackwardFast(const Tensor& qkv, const Tensor& out, const Tensor& l, size_t num_heads, bool causal);
 
 		void backward() override;
 		void release() override;
 		void get_inputs(std::vector<Tensor>& out) const;
 
 	private:
-		Tensor m_qkv;		
+		Tensor m_qkv;
+		Tensor m_o;
+		Tensor m_l;
 		size_t m_num_heads;
 		bool m_causal;
 	};

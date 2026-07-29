@@ -2247,6 +2247,7 @@ namespace Inferno {
 	__global__ void cuda_my_fused_flash_attention_kernel(
 		const T* __restrict__ QKV,
 		T* __restrict__ O,
+		T* __restrict__ L,
 		int B,       //number of batches
 		int Tseq,    //number of tokens in sequence
 		int C,       //width of qkv matrix
@@ -2512,6 +2513,15 @@ namespace Inferno {
 
 		}
 
+		// write out L = m + log(l), one value per row, matching the
+		// backward kernel's expected [B, H, Tseq] layout
+		if (tid < BLOCK_M) {
+			int globalrow = blockIdx.x * BLOCK_M + tid;
+			if (globalrow < Tseq) {
+				size_t l_index = batch * H * Tseq + head * Tseq + globalrow;
+				L[l_index] = ShM[tid] + __logf(ShL[tid]);
+			}
+		}
 
 
 	}
@@ -2522,7 +2532,7 @@ namespace Inferno {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//
-	//  Function cuda_flash_block - Current production call
+	//  Function cuda_flash_block - old production version before i wrote my own
 	//
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2583,11 +2593,19 @@ namespace Inferno {
 
 
 	
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	//  Function cuda_flash_block_my_version_check - Current production call
+	//
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	template <typename T>
 	void cuda_flash_block_my_version_check(
 		const T* qkvptr,
 		T* optr,
+		T* lptr,
 		size_t B,
 		size_t Tseq,
 		size_t C,
@@ -2617,6 +2635,7 @@ namespace Inferno {
 			<< <grid, THREADS >> > (
 				qkvptr,
 				optr,
+				lptr,
 				B,
 				Tseq,
 				C,
@@ -2635,8 +2654,8 @@ namespace Inferno {
 		//cudaDeviceSynchronize();
 	}
 
-	template void cuda_flash_block_my_version_check<float>(const float*, float*, size_t, size_t, size_t, size_t, size_t, bool);
-	template void cuda_flash_block_my_version_check<double>(const double*, double*, size_t, size_t, size_t, size_t, size_t, bool);
+	template void cuda_flash_block_my_version_check<float>(const float*, float*, float*, size_t, size_t, size_t, size_t, size_t, bool);
+	template void cuda_flash_block_my_version_check<double>(const double*, double*, double*, size_t, size_t, size_t, size_t, size_t, bool);
 
 
 
@@ -3309,6 +3328,178 @@ namespace Inferno {
 		}
 	}
 
+	
+
+	template<typename T, int BLOCK_M, int TILE_N, int DMAX>
+	__global__ void flash_backward_fused_kernel3(
+		const T* __restrict__ qkv,
+		const T* __restrict__ out,      // NEW: forward output O, shape [B, Tseq, C]
+		const T* __restrict__ L,        // NEW: stored logsumexp, shape [B, H, Tseq]
+		const T* __restrict__ dout,		
+		T* __restrict__       dqkv,
+		size_t B,
+		size_t Tseq,
+		size_t C,       // H * D
+		size_t H,
+		size_t D,
+		bool   causal
+	) {
+		// -------------------------------------------------------------------------
+		// Compile-time checks
+		// -------------------------------------------------------------------------
+		constexpr int WARPS = BLOCK_M;
+		constexpr int THREADS = WARPS * 32;
+		static_assert(DMAX == 64, "DMAX must be 64");
+		// -------------------------------------------------------------------------
+		// Shared memory
+		// -------------------------------------------------------------------------
+		__shared__ float shK[TILE_N][DMAX];   // current K tile
+		__shared__ float shV[TILE_N][DMAX];   // current V tile
+		__shared__ float shDK[TILE_N][DMAX];  // dK accumulator (zeroed per tile)
+		__shared__ float shDV[TILE_N][DMAX];  // dV accumulator (zeroed per tile)
+		// -------------------------------------------------------------------------
+		// Thread / warp / block identity
+		// -------------------------------------------------------------------------
+		int tid = threadIdx.x;
+		int warp = tid / 32;
+		int lane = tid % 32;
+		size_t q_start = (size_t)blockIdx.x * BLOCK_M;
+		size_t bh = blockIdx.y;
+		size_t b = bh / H;
+		size_t h = bh % H;
+		size_t t = q_start + warp;
+		bool active = (warp < BLOCK_M) && (t < Tseq);
+		float scale = rsqrtf((float)D);
+		// -------------------------------------------------------------------------
+		// Per-warp registers
+		// -------------------------------------------------------------------------
+		float q_reg[2] = { 0.f, 0.f };   // Q[t]
+		float do_reg[2] = { 0.f, 0.f };  // dO[t]
+		float o_reg[2] = { 0.f, 0.f };   // O[t]      -- NEW: needed for the delta shortcut
+		float dq_reg[2] = { 0.f, 0.f };  // accumulator for dQ[t]
+		float row_L = 0.f;               // stored logsumexp for this row -- NEW
+
+		if (active) {
+			for (int i = 0; i < 2; i++) {
+				int    d = lane + i * 32;
+				size_t q_index = b * Tseq * 3 * C + t * 3 * C + h * D + d;
+				size_t do_index = b * Tseq * C + t * C + h * D + d;
+				size_t o_index = b * Tseq * C + t * C + h * D + d;   // same layout as dO/out
+				q_reg[i] = (float)qkv[q_index];
+				do_reg[i] = (float)dout[do_index];
+				o_reg[i] = (float)out[o_index];
+			}
+			size_t l_index = b * H * Tseq + h * Tseq + t;
+			row_L = (float)L[l_index];
+		}
+
+		// =========================================================================
+		// delta_t = dot(O_t, dO_t)
+		//
+		// Replaces the old Pass 2's full K/V sweep (delta = sum_j P_ij * dP_ij).
+		// Algebraically identical: since O_t = sum_j(P_tj * V_j), it follows that
+		// sum_j(P_tj * dP_tj) == dot(O_t, dO_t) -- a single warp-reduced dot
+		// product over the head dimension, no sweep over j required at all.
+		// =========================================================================
+		float delta = 0.f;
+		if (active) {
+			for (int i = 0; i < 2; i++) delta += o_reg[i] * do_reg[i];
+#pragma unroll
+			for (int off = 16; off > 0; off >>= 1)
+				delta += __shfl_down_sync(0xffffffff, delta, off);
+			delta = __shfl_sync(0xffffffff, delta, 0);
+		}
+
+		// =========================================================================
+		// Single fused pass over K/V tiles -- accumulates dQ, dK, dV together.
+		//
+		// row_m/row_l recomputation (old Pass 1) is gone: P_ij is recovered
+		// directly from the stored logsumexp L_t via  P_ij = exp(score_ij - L_t).
+		// delta (old Pass 2) is gone: computed once above from O_t/dO_t.
+		// This is the only sweep over j that remains -- down from 3 sweeps to 1.
+		// =========================================================================
+		for (size_t k_start = 0; k_start < Tseq; k_start += TILE_N) {
+			for (int idx = tid; idx < TILE_N * DMAX; idx += THREADS) {
+				int    kj = idx / DMAX;
+				int    d = idx % DMAX;
+				size_t j = k_start + kj;
+				if (j < Tseq) {
+					size_t k_index = b * Tseq * 3 * C + j * 3 * C + C + h * D + d;
+					size_t v_index = b * Tseq * 3 * C + j * 3 * C + 2 * C + h * D + d;
+					shK[kj][d] = (float)qkv[k_index];
+					shV[kj][d] = (float)qkv[v_index];
+				}
+				else {
+					shK[kj][d] = 0.f;
+					shV[kj][d] = 0.f;
+				}
+				shDK[kj][d] = 0.f;
+				shDV[kj][d] = 0.f;
+			}
+			__syncthreads();   // barrier: tile + zero complete before any compute
+
+			if (active) {
+				for (int kj = 0; kj < TILE_N; kj++) {
+					size_t j = k_start + kj;
+					if (j >= Tseq)       break;
+					if (causal && j > t) continue;
+
+					float score = 0.f, dp = 0.f;
+					for (int i = 0; i < 2; i++) {
+						int d = lane + i * 32;
+						score += q_reg[i] * shK[kj][d];
+						dp += do_reg[i] * shV[kj][d];
+					}
+#pragma unroll
+					for (int off = 16; off > 0; off >>= 1) {
+						score += __shfl_down_sync(0xffffffff, score, off);
+						dp += __shfl_down_sync(0xffffffff, dp, off);
+					}
+					score = __shfl_sync(0xffffffff, score, 0);
+					dp = __shfl_sync(0xffffffff, dp, 0);
+					score *= scale;
+
+					// P recovered directly from stored L_t -- no row_m/row_l needed
+					float p = __expf(score - row_L);
+					float dS = p * (dp - delta);
+
+					for (int i = 0; i < 2; i++) {
+						int d = lane + i * 32;
+						dq_reg[i] += dS * scale * shK[kj][d];
+						atomicAdd(&shDK[kj][d], dS * scale * q_reg[i]);
+						atomicAdd(&shDV[kj][d], p * do_reg[i]);
+					}
+				}
+			}
+			__syncthreads();   // barrier: all atomics into shDK/shDV complete
+
+			for (int idx = tid; idx < TILE_N * DMAX; idx += THREADS) {
+				int    kj = idx / DMAX;
+				int    d = idx % DMAX;
+				size_t j = k_start + kj;
+				if (j < Tseq) {
+					size_t dk_index = b * Tseq * 3 * C + j * 3 * C + C + h * D + d;
+					size_t dv_index = b * Tseq * 3 * C + j * 3 * C + 2 * C + h * D + d;
+					atomicAdd(&dqkv[dk_index], (T)shDK[kj][d]);
+					atomicAdd(&dqkv[dv_index], (T)shDV[kj][d]);
+				}
+			}
+			__syncthreads();   // barrier before next tile overwrites shK/shV/shDK/shDV
+		}
+
+		// -------------------------------------------------------------------------
+		// Write dQ for query row t -- exactly one block owns row t, no atomic needed.
+		// -------------------------------------------------------------------------
+		if (active) {
+			for (int i = 0; i < 2; i++) {
+				int    d = lane + i * 32;
+				size_t dq_index = b * Tseq * 3 * C + t * 3 * C + h * D + d;
+				dqkv[dq_index] = (T)dq_reg[i];
+			}
+		}
+	}
+
+
 
 	template<typename T>
 	__global__ void flash_backward_reference_kernel(
@@ -3540,6 +3731,8 @@ namespace Inferno {
 	template <typename T>
 	void cuda_flash_backward_fused(
 		const T* qkvptr,
+		const T* optr,
+		const T* lptr,
 		const T* doutptr,
 		T* dqkvptr,
 		size_t B,
@@ -3579,11 +3772,24 @@ namespace Inferno {
 
 		//dim3 block(1);
 
+		/*const T* __restrict__ qkv,
+			const T* __restrict__ out,      // NEW: forward output O, shape [B, Tseq, C]
+			const T* __restrict__ dout,
+			const T* __restrict__ L,        // NEW: stored logsumexp, shape [B, H, Tseq]
+			T* __restrict__       dqkv,
+			size_t B,
+			size_t Tseq,
+			size_t C,       // H * D
+			size_t H,
+			size_t D,*/
+
 		
-		flash_backward_fused_kernel2<T, BLOCK_M, TILE_N, DMAX>
+		flash_backward_fused_kernel3<T, BLOCK_M, TILE_N, DMAX>
 		//flash_backward_reference_kernel<T>
 			<< <grid, THREADS >> > (
 				qkvptr,
+				optr,
+				lptr,
 				doutptr,
 				dqkvptr,
 				B,
@@ -3609,7 +3815,7 @@ namespace Inferno {
 	}
 
 
-	template void cuda_flash_backward_fused<float>(const float*, const float*, float*, size_t, size_t, size_t, size_t, size_t, bool);
-	template void cuda_flash_backward_fused<double>(const double*, const double*, double*, size_t, size_t, size_t, size_t, size_t, bool);
+	template void cuda_flash_backward_fused<float>(const float*, const float*, const float*, const float*, float*, size_t, size_t, size_t, size_t, size_t, bool);
+	template void cuda_flash_backward_fused<double>(const double*, const double*, const double*, const double*, double*, size_t, size_t, size_t, size_t, size_t, bool);
 
 }

@@ -452,10 +452,11 @@ namespace Inferno {
 	void cuda_flash_block(const T* qkvptr, T* optr, size_t B, size_t Tseq, size_t C, size_t H, size_t D, bool causal);
 
 	template <typename T>
-	void cuda_flash_block_my_version_check(const T* qkvptr, T* optr, size_t B, size_t Tseq, size_t C, size_t H, size_t D, bool causal);
+	void cuda_flash_block_my_version_check(const T* qkvptr, T* optr, T* lptr, size_t B, size_t Tseq, size_t C, size_t H, size_t D, bool causal);
 
 	template <typename T>
-	void cuda_flash_backward_fused(const T* qkvptr, const T* doutptr, T* dqkvptr, size_t B, size_t Tseq, size_t C, size_t H, size_t D, bool causal);
+	void cuda_flash_backward_fused(const T* qkvptr, const T* optr, const T* lptr, const T* doutptr, T* dqkvptr, size_t B, size_t Tseq, size_t C, size_t H, size_t D, bool causal);
+	
 	
 
 

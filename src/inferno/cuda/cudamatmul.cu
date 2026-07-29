@@ -1235,8 +1235,8 @@ namespace Inferno {
 
             const float alpha = 1.0f;
             const float beta = 0.0f;
-
-            check_cublas(
+            //std::cout << "hi" << std::endl;
+            /*check_cublas(
                 cublasSgemmStridedBatched(
                     handle,
                     opB,
@@ -1252,6 +1252,26 @@ namespace Inferno {
                     batch_count
                 ),
                 "cublasSgemmStridedBatched failed"
+            );*/
+
+            check_cublas(
+                cublasGemmStridedBatchedEx(
+                    handle,
+                    opB,
+                    opA,
+                    static_cast<int>(N),
+                    static_cast<int>(M),
+                    static_cast<int>(K),
+                    &alpha,
+                    bptr, CUDA_R_32F, ldaB, strideB,
+                    aptr, CUDA_R_32F, ldaA, strideA,
+                    &beta,
+                    optr, CUDA_R_32F, static_cast<int>(N), strideC,
+                    batch_count,
+                    CUBLAS_COMPUTE_32F_FAST_TF32,   // or CUBLAS_COMPUTE_32F for full precision
+                    CUBLAS_GEMM_DEFAULT
+                ),
+                "cublasSgemmStridedBatchedEx failed"
             );
             //CUDA_CHECK_SYNC("cublasSgemmStridedBatched");
         }
