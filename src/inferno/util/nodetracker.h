@@ -4,6 +4,7 @@
 #include <set>
 #include <string>
 #include <map>
+#include <mutex>
 
 namespace Inferno {
 
@@ -19,10 +20,7 @@ namespace Inferno {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     class NodeTracker {
-    private:
-        // Changed from a set to a map to associate IDs with names
-        static std::map<int, std::string> idNameMap;
-
+  
     public:
         NodeTracker();
 
@@ -46,6 +44,12 @@ namespace Inferno {
 
         // Display all IDs and their associated names
         static void dumpIDs();
+
+    private:
+        // Changed from a set to a map to associate IDs with names
+        static std::map<int, std::string> idNameMap;
+        static std::mutex m_mutex;
+
     };
 }
 

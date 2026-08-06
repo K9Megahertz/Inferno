@@ -65,7 +65,7 @@ public:
         auto it = live_size_.find(ptr);
         if (it == live_size_.end()) {
             // Not something we allocated — shouldn't happen, but don't
-            // silently leak/crash. Free it directly and move on.
+            // silently leak/crash. Free it directly and move on.            
             cudaFree(ptr);
             return;
         }
@@ -73,6 +73,7 @@ public:
         live_size_.erase(it);
         bytes_in_use_ -= rounded;
 
+        cudaDeviceSynchronize();
         free_blocks_[rounded].push_back(ptr);
     }
 

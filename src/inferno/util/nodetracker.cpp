@@ -1,8 +1,10 @@
 #include "nodetracker.h"
 #include <map>
 
+
 // Changed from a simple set to a map of ID to name
 std::map<int, std::string> Inferno::NodeTracker::idNameMap;
+std::mutex Inferno::NodeTracker::m_mutex;
 
 namespace Inferno {
     NodeTracker::NodeTracker() {}
@@ -20,12 +22,14 @@ namespace Inferno {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     void NodeTracker::addID(int id) {
+        std::lock_guard<std::mutex> lock(m_mutex);
         // Add with empty name by default
         idNameMap[id] = "";
     }
 
    
     void NodeTracker::addID(int id, const std::string& name) {
+        std::lock_guard<std::mutex> lock(m_mutex);
         // Add with the specified name
         idNameMap[id] = name;
     }
@@ -43,6 +47,7 @@ namespace Inferno {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     void NodeTracker::removeID(int id) {
+        std::lock_guard<std::mutex> lock(m_mutex);
         auto it = idNameMap.find(id);
         // If the item exists, erase it
         if (it != idNameMap.end()) {
@@ -63,6 +68,7 @@ namespace Inferno {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     void NodeTracker::updateName(int id, const std::string& name) {
+        std::lock_guard<std::mutex> lock(m_mutex);
         auto it = idNameMap.find(id);
         // If the ID exists, update its name
         if (it != idNameMap.end()) {
@@ -83,6 +89,7 @@ namespace Inferno {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     std::string NodeTracker::getName(int id) {
+        std::lock_guard<std::mutex> lock(m_mutex);
         auto it = idNameMap.find(id);
         if (it != idNameMap.end()) {
             return it->second;
@@ -103,6 +110,7 @@ namespace Inferno {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     bool NodeTracker::hasID(int id) {
+        std::lock_guard<std::mutex> lock(m_mutex);
         return idNameMap.find(id) != idNameMap.end();
     }
 
@@ -120,6 +128,7 @@ namespace Inferno {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     void NodeTracker::dumpIDs() {
+        std::lock_guard<std::mutex> lock(m_mutex);
         std::cout << "ID List : " << std::endl;
         for (const auto& pair : idNameMap) {
             std::cout << "ID: " << pair.first;

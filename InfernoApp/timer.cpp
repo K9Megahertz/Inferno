@@ -47,7 +47,7 @@ void Timer::lap(const std::string& label)
     if (!m_running) {
         return;
     }
-    cudaDeviceSynchronize();
+    //cudaDeviceSynchronize();
     m_laps.push_back({ label, Clock::now() });
 }
 

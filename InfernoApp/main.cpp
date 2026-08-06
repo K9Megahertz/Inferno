@@ -552,8 +552,8 @@ int main(int argc, char* argv[]) {
 	InfernoTokenizer::BPETokenizer tok;
 	tok.Initialize({ "data\\openwebtext_merges_gold.txt", "data\\openwebtext_vocab_gold.txt" });
 
-	DataLoader2 loader("data\\openwebtext_clean_gold.tokens", batch_size, context_size);
-	//ThreadedMmapDataLoader loader("data\\openwebtext_clean_gold.tokens", batch_size, context_size);
+	//DataLoader2 loader("data\\openwebtext_clean_gold.tokens", batch_size, context_size);
+	ThreadedMmapDataLoader loader("data\\openwebtext_clean_gold.tokens", batch_size, context_size);
 
 	int checkpoint_interval = 25;
 	int total_steps = 32000;
@@ -614,13 +614,15 @@ int main(int argc, char* argv[]) {
 				std::string sy = tok.decode(blahy);
 
 				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << "**************************** Tensor X ****************************" << std::endl;
-				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sx.substr(0, 32) << std::endl;
+				//logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sx.substr(0, 32) << std::endl;
+				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sx << std::endl;
 				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
 				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
 
 
 				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << "**************************** Tensor Y ****************************" << std::endl;
-				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sy.substr(0, 32) << std::endl;
+				//logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sy.substr(0, 32) << std::endl;
+				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << sy << std::endl;
 				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
 				logger.Append(Inferno::Logger::LogLevel::LOGLEVEL_INFO) << std::endl;
 			}

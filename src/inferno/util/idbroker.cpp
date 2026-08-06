@@ -1,4 +1,4 @@
 #include "idbroker.h"
 
 
-int Inferno::IDBroker::nextid = 0;
+std::atomic<int> Inferno::IDBroker::nextid = 0;

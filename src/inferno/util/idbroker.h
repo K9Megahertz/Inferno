@@ -1,5 +1,5 @@
 #pragma once
-
+#include <atomic>
 
 
 
@@ -33,13 +33,14 @@ namespace Inferno {
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 		static int GenID() {
-			return nextid++;
+			//return nextid++;
+			return nextid.fetch_add(1, std::memory_order_relaxed);
 		}
 
 
 	private:
-
-		static int nextid;
+		
+		static std::atomic<int> nextid;
 
 	};
 
