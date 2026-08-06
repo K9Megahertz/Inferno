@@ -11,70 +11,101 @@
 
 #define CUDA_CHECK(call)                                                   \
     do {                                                                   \
-        cudaError_t err__ = (call);                                       \
-        if (err__ != cudaSuccess) {                                       \
-            std::ostringstream oss;                                       \
-            oss << "CUDA error at " << __FILE__ << ":" << __LINE__        \
-                << " - " << cudaGetErrorString(err__);                    \
-            throw std::runtime_error(oss.str());                         \
+        cudaError_t err__ = (call);                                        \
+        if (err__ != cudaSuccess) {                                        \
+            std::ostringstream oss;                                        \
+            oss << "CUDA error at " << __FILE__ << ":" << __LINE__         \
+                << " - " << cudaGetErrorString(err__);                     \
+            throw std::runtime_error(oss.str());                           \
         }                                                                  \
     } while (0)
 
 class CachingAllocator {
 public:
+
+    struct MemoryBlock {
+        void* ptr = nullptr;
+        size_t size = 0;
+        bool is_free = true;
+        cudaEvent_t hardware_checkpoint = nullptr; // GPU tracking marker
+    };
+
+
     static CachingAllocator& instance() {
         static CachingAllocator alloc;
         return alloc;
     }
 
     void* allocate(size_t bytes) {
-        if (bytes == 0) return nullptr;
+        if (bytes == 0) return nullptr;              //no size specified
 
-        size_t rounded = round_size(bytes);
-        std::lock_guard<std::mutex> lock(mutex_);
+        size_t rounded_size = round_size(bytes);          // rounded up size based on our rules
+        std::lock_guard<std::mutex> lock(mutex_);    // lock mutex    
 
-        auto& free_list = free_blocks_[rounded];
-        if (!free_list.empty()) {
-            void* ptr = free_list.back();
-            free_list.pop_back();
-            live_size_[ptr] = rounded;
-            bytes_in_use_ += rounded;
-            return ptr;
-        }
+        auto& free_list = m_free_blocks[rounded_size];    //get the list of blocks that matches the size we want
+                                                     //this could have one or fifty
+
+        //go through them all
+        for (size_t i = 0; i < free_list.size(); i++) {
+            MemoryBlock& blk = free_list[i];
+            
+            //is the block cleared for use?
+            bool ready = !blk.hardware_checkpoint || (cudaEventQuery(blk.hardware_checkpoint) == cudaSuccess);
+
+            //yes
+            if (ready) {
+
+                //remove it from the free list
+                MemoryBlock realblk = blk;
+                free_list[i] = free_list.back();   // swap-erase, O(1) instead of shifting the vector
+                free_list.pop_back();
+                realblk.is_free = false;
+                realblk.size = rounded_size;
+                bytes_in_use_ += rounded_size;
+
+                m_live_blocks[realblk.ptr] = realblk;  // We'll do it live!
+                return realblk.ptr;
+            }
+        }      
 
         // No cached block big enough — grow the pool.
-        void* ptr = nullptr;
-        cudaError_t err = cudaMalloc(&ptr, rounded);
+        void* ptr = nullptr;       
+
+        cudaError_t err = cudaMalloc(&ptr, rounded_size);
         if (err == cudaErrorMemoryAllocation) {
             // Out of memory — release idle cached blocks and retry once.
             release_all_locked();
-            err = cudaMalloc(&ptr, rounded);
+            err = cudaMalloc(&ptr, rounded_size);
         }
         CUDA_CHECK(err);
 
-        live_size_[ptr] = rounded;
-        bytes_in_use_ += rounded;
-        bytes_reserved_ += rounded;
+        m_live_blocks[ptr].size = rounded_size;
+        m_live_blocks[ptr].ptr = ptr;
+        m_live_blocks[ptr].is_free = false;
+        bytes_in_use_ += rounded_size;
+        bytes_reserved_ += rounded_size;
         return ptr;
     }
 
-    void deallocate(void* ptr) {
+    void deallocate(void* ptr, cudaStream_t stream = 0) {
         if (ptr == nullptr) return;
 
         std::lock_guard<std::mutex> lock(mutex_);
-        auto it = live_size_.find(ptr);
-        if (it == live_size_.end()) {
+        auto it = m_live_blocks.find(ptr);
+        if (it == m_live_blocks.end()) {
             // Not something we allocated — shouldn't happen, but don't
             // silently leak/crash. Free it directly and move on.            
             cudaFree(ptr);
             return;
         }
-        size_t rounded = it->second;
-        live_size_.erase(it);
-        bytes_in_use_ -= rounded;
+        MemoryBlock blk = it->second;   //get the Memoryblock
+        m_live_blocks.erase(it);
+        bytes_in_use_ -= blk.size;
 
-        cudaDeviceSynchronize();
-        free_blocks_[rounded].push_back(ptr);
+        if (blk.hardware_checkpoint == nullptr) //we've never created an event before
+            cudaEventCreateWithFlags(&blk.hardware_checkpoint, cudaEventDisableTiming);
+        cudaEventRecord(blk.hardware_checkpoint, stream);
+        m_free_blocks[blk.size].push_back(blk);
     }
 
     // Actually return idle memory to the driver. Call this if you hit OOM
@@ -110,19 +141,22 @@ private:
     }
 
     void release_all_locked() {
-        for (auto& [size, blocks] : free_blocks_) {
-            for (void* ptr : blocks) {
-                cudaFree(ptr);
+        for (auto& [size, blocks] : m_free_blocks) {
+            for (MemoryBlock blk : blocks) {
+                if (blk.hardware_checkpoint) {
+                    cudaEventDestroy(blk.hardware_checkpoint);
+                }
+                cudaFree(blk.ptr);
                 bytes_reserved_ -= size;
             }
         }
-        free_blocks_.clear();
+        m_free_blocks.clear();
     }
 
     std::mutex mutex_;
 
-    std::unordered_map<size_t, std::vector<void*>> free_blocks_; // size -> free ptrs
-    std::unordered_map<void*, size_t> live_size_;                // ptr -> rounded size
+    std::unordered_map<size_t, std::vector<MemoryBlock>> m_free_blocks; // size -> free blks
+    std::unordered_map<void*, MemoryBlock> m_live_blocks;                // ptr -> rounded size
 
     size_t bytes_in_use_ = 0;
     size_t bytes_reserved_ = 0;
