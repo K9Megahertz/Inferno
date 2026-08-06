@@ -22,7 +22,6 @@ namespace Inferno {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     void NodeTracker::addID(int id) {
-        std::lock_guard<std::mutex> lock(m_mutex);
         // Add with empty name by default
         idNameMap[id] = "";
     }
