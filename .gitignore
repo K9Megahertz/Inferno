@@ -13,6 +13,7 @@ out/
 build/
 logs/
 data/
+checkpoints/
 
 # CMake
 CMakeFiles/
