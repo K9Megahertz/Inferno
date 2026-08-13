@@ -39,13 +39,7 @@ namespace Inferno {
     void CrossEntropyLossBackward::backward() {
         INFERNO_LOG_DEBUG() << "CrossEntropyLossBackward::backward" << std::endl;
 
-        Tensor g_out = Engine::grad_in(this, 0);
-
-        /*if (!g_out.defined()) {
-            Logger::Append(Logger::LogLevel::LOGLEVEL_ERROR,
-                "CrossEntropyLossBackward did not receive upstream gradient");
-            exit(1);
-        }*/
+        Tensor g_out = Engine::grad_in(this, 0);     
 
         if (m_target.dtype() != DType::Int32) {
             INFERNO_LOG_ERROR() << "CrossEntropyLossBackward requires Int32 targets" << std::endl;
@@ -114,8 +108,7 @@ namespace Inferno {
             }
 
             Engine::accumulate(GetImpl(m_logits)->grad_edge().get(), 0, grad_logits);
-            //std::cout << "grad_logits" << std::endl;
-            //std::cout << grad_logits << std::endl;
+           
             });
     }
 
@@ -151,7 +144,6 @@ namespace Inferno {
 
     void CrossEntropyLossBackward::get_inputs(std::vector<Tensor>& out) const {
         out.push_back(m_logits);
-        // target does not receive gradients
     }
 
 

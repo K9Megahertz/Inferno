@@ -83,9 +83,7 @@ namespace Inferno {
 
 	void EmbeddingBackward::get_inputs(std::vector<Tensor>& out) const {
 		out.push_back(m_embeddings);
-		out.push_back(m_token_ids);
-
-		
+		out.push_back(m_token_ids);		
 	}
 
 

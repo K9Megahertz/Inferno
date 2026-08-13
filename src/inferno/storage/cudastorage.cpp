@@ -14,15 +14,12 @@ namespace  Inferno {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    CUDAStorage::CUDAStorage(size_t numbytes) {
-        
-		//check_cuda(cudaMalloc(&ptr, numbytes), "CUDAstorage failed to cudaMalloc");
+    CUDAStorage::CUDAStorage(size_t numbytes) {        		
 		ptr = CachingAllocator::instance().allocate(numbytes);
         m_numbytes = numbytes;
     }
 
-    CUDAStorage::~CUDAStorage() {        
-		//check_cuda(cudaFree(ptr), "CUDAstorage failed to cudaFree");
+    CUDAStorage::~CUDAStorage() {        		
 		CachingAllocator::instance().deallocate(ptr);
     }
 }

@@ -52,8 +52,6 @@ namespace Inferno {
 		if (nb)
 			Engine::accumulate(nb.get(), 0, g_b);
 
-
-
 	}
 
 

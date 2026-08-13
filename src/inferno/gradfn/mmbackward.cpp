@@ -78,9 +78,6 @@ namespace Inferno {
 			G2.strides() = new_strides;
 		}
 
-
-
-
 		// dA = G @ B^T
 		//Tensor BT = B2.transpose(-1, -2).contiguous();
 		Tensor g_a = matmul_impl(G2, B2, "MMBackward_dA", false, true);

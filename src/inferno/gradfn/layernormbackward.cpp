@@ -51,8 +51,6 @@ namespace Inferno {
 			std::exit(1);
 		}
 
-		
-
 		Tensor g_out = Engine::grad_in(this, 0); // same shape as input
 
 		if (g_out.dtype() != m_A.dtype()) {
@@ -185,6 +183,5 @@ namespace Inferno {
 		out.push_back(m_gamma);
 		out.push_back(m_beta);
 	}
-
 
 }

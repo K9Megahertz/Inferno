@@ -45,10 +45,7 @@ namespace Inferno {
 			using RT = promote_t<AT, GT>;
 
 
-
-
 			Inferno::Tensor out(dtype_of_v<RT>, m_A.shape(), "GeluBackward", m_A.device());
-
 
 			//get pointers to data
 			AT* aptr = GetImpl(m_A)->data_as_ptr<AT>();
@@ -113,7 +110,6 @@ namespace Inferno {
 		// drop references so graph can free
 		m_A = Tensor{};
 		m_out = Tensor{};
-
 	}
 
 
@@ -130,8 +126,5 @@ namespace Inferno {
 
 	void GeluBackward::get_inputs(std::vector<Tensor>& out) const {
 		out.push_back(m_A);
-
 	}
-
-
 }

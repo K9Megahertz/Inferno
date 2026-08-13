@@ -69,9 +69,7 @@ namespace Inferno {
 
 			m_biases = Tensor(dtype, bias_data, { out_features }, "biases",device, true);
 			
-
 		});
-
 
 		m_in_features = in_features;
 		m_out_features = out_features;
@@ -79,9 +77,6 @@ namespace Inferno {
 		// Register parameters
 		register_parameter("weights",&m_weights);
 		register_parameter("bias", &m_biases);
-
-
-
 
 	}
 

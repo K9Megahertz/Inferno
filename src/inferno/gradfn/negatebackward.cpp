@@ -52,8 +52,6 @@ namespace Inferno {
 		if (na)
 			Engine::accumulate(na.get(), 0, g_a);
 
-		
-
 	}
 
 
@@ -70,8 +68,7 @@ namespace Inferno {
 
 	void NegateBackward::release() {
 		// drop references so graph can free
-		m_A = Tensor{};
-		
+		m_A = Tensor{};		
 	}
 
 
@@ -88,9 +85,6 @@ namespace Inferno {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	void NegateBackward::get_inputs(std::vector<Tensor>& out) const {
-		out.push_back(m_A);
-		
+		out.push_back(m_A);		
 	}
-
-
 }

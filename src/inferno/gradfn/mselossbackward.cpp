@@ -45,8 +45,6 @@ namespace Inferno {
             using BT = typename decltype(TB)::type;
             using RT = promote_t<AT, BT>;
 
-            
-
             Tensor g_a(dtype_of_v<RT>, m_A.shape(), "mse_grad_a", m_A.device());
             Tensor g_b(dtype_of_v<RT>, m_B.shape(), "mse_grad_b", m_B.device());
 
@@ -55,7 +53,6 @@ namespace Inferno {
             auto gout = GetImpl(g_out)->data_as_ptr<RT>();
             auto gaptr = GetImpl(g_a)->data_as_ptr<RT>();
             auto gbptr = GetImpl(g_b)->data_as_ptr<RT>();
-
 
 			switch (g_out.device().m_type) {
 
