@@ -2,6 +2,8 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+
+
 namespace InfernoTokenizer {
 
 
@@ -487,8 +489,9 @@ namespace InfernoTokenizer {
 			}
 
 			// Otherwise decode as a normal BPE/byte token.
-			if (t >= m_vocablist.size()) {
-				throw std::runtime_error("BPETokenizer::decode invalid token id");
+			if (t >= m_vocablist.size()) {				
+				std::cout << "BPETokenizer::decode invalid token id" << std::endl;
+				exit(1);
 			}
 
 			out += m_vocablist[t];
@@ -502,8 +505,9 @@ namespace InfernoTokenizer {
 		converted.reserve(tokens.size());
 
 		for (int t : tokens) {
-			if (t < 0) {
-				throw std::runtime_error("BPETokenizer::decode negative token id");
+			if (t < 0) {				
+				std::cout << "BPETokenizer::decode negative token id" << std::endl;
+				exit(1);
 			}
 
 			converted.push_back(static_cast<uint32_t>(t));

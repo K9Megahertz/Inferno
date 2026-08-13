@@ -579,8 +579,8 @@ int main(int argc, char* argv[]) {
 	model.to(device);
 
 	int max_new_tokens = 1024;
-	float temperature = 0.9f;
-	int top_k = 40;
+	float temperature = 0.95f;
+	int top_k = 20;
 
 
 

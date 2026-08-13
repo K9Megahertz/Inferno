@@ -1,7 +1,7 @@
 #pragma once
 #include "node.h"
 #include <inferno/core/tensor.h>
-
+#include <inferno/util/logging_internal.h>
 
 
 
@@ -147,8 +147,9 @@ namespace Inferno {
 
         if (astrides.size() != ndim ||
             gstrides.size() != ndim ||
-            ostrides.size() != ndim) {
-            throw std::runtime_error("cpu_gelu_backward_strided: shape/stride rank mismatch");
+            ostrides.size() != ndim) {            
+            INFERNO_LOG_ERROR() << "cpu_gelu_backward_strided: shape/stride rank mismatch" << std::endl;
+            exit(1);
         }
 
         // Total logical elements

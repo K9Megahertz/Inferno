@@ -1,5 +1,7 @@
 #include <inferno/core/dtype.h>
 
+
+
 namespace Inferno {
 
 
@@ -45,11 +47,10 @@ namespace Inferno {
 		switch (a_dt) {
 		case DType::Int32: return fn(Tag<int>{});
 		case DType::Float32: return fn(Tag<float>{});
-		case DType::Float64: return fn(Tag<double>{});
-			break;
-		}
-		throw std::runtime_error("Unsupported dtype combination");
-		//exit(1);
+		case DType::Float64: return fn(Tag<double>{});			
+		}		
+		std::cout << "Unsupported dtype combination" << std::endl;
+		exit(1);
 	}
 
 
@@ -77,9 +78,9 @@ namespace Inferno {
 			case DType::Float64: return fn(Tag<double>{}, Tag<double>{});
 			}
 			break;
-		}
-		throw std::runtime_error("Unsupported dtype combination");
-		//exit(1);
+		}		
+		std::cout << "Unsupported dtype combination" << std::endl;
+		exit(1);
 	}
 
 

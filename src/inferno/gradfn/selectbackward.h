@@ -2,6 +2,7 @@
 
 #include "node.h"
 #include <inferno/core/tensor.h>
+#include <inferno/util/logging_internal.h>
 
 
 namespace Inferno {
@@ -47,8 +48,9 @@ namespace Inferno {
 		const size_t ndim_out = out_shape.size();
 		const size_t ndim_parent = ndim_out + 1;
 
-		if (gstrides.size() != ndim_out || parent_strides.size() != ndim_parent) {
-			throw std::runtime_error("cpu_select_backward_strided: shape/stride rank mismatch");
+		if (gstrides.size() != ndim_out || parent_strides.size() != ndim_parent) {			
+			INFERNO_LOG_ERROR() << "cpu_select_backward_strided: shape/stride rank mismatch" << std::endl;
+			exit(1);
 		}
 
 		size_t N = 1;

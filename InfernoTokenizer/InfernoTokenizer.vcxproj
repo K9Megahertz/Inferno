@@ -24,6 +24,11 @@
   <ItemGroup>
     <ClCompile Include="..\src\infernotokenizer\bpetokenizer.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Logger\Logger.vcxproj">
+      <Project>{d5809b03-f5e9-4c83-bd2c-b43b0e568978}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>

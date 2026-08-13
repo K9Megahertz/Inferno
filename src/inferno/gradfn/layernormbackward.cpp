@@ -47,7 +47,7 @@ namespace Inferno {
 		NoGradGuard guard;
 
 		if (m_dim != m_A.shape().back()) {
-			INFERNO_LOG_ERROR() << "LayerNorm currently only supports last-dim normalization";
+			INFERNO_LOG_ERROR() << "LayerNorm currently only supports last-dim normalization" << std::endl;
 			std::exit(1);
 		}
 
@@ -56,7 +56,7 @@ namespace Inferno {
 		Tensor g_out = Engine::grad_in(this, 0); // same shape as input
 
 		if (g_out.dtype() != m_A.dtype()) {
-			INFERNO_LOG_ERROR() << "LayerNormBackward expects g_out dtype == input dtype";
+			INFERNO_LOG_ERROR() << "LayerNormBackward expects g_out dtype == input dtype" << std::endl;
 			std::exit(1);
 		}
 

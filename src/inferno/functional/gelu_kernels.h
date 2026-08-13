@@ -1,4 +1,5 @@
 #include <vector>
+#include <inferno/util/logging_internal.h>
 
 namespace Inferno {
 
@@ -40,8 +41,8 @@ namespace Inferno {
     ) {
     const size_t ndim = shape.size();
 
-    if (astrides.size() != ndim || ostrides.size() != ndim) {
-        throw std::runtime_error("cpu_gelu_strided: shape/stride rank mismatch");
+    if (astrides.size() != ndim || ostrides.size() != ndim) {        
+        INFERNO_LOG_ERROR() << "cpu_gelu_strided: shape/stride rank mismatch" << std::endl;
         exit(1);
     }
 

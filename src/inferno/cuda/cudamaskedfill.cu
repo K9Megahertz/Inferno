@@ -100,16 +100,19 @@ namespace Inferno {
         int input_rank = static_cast<int>(input_shape.size());
         int mask_rank = static_cast<int>(mask_shape.size());
 
-        if (input_shape.size() != input_strides.size()) {
-            throw std::runtime_error("cuda_masked_fill: input_shape and input_strides size mismatch");
+        if (input_shape.size() != input_strides.size()) {            
+            INFERNO_LOG_ERROR() << "cuda_masked_fill: input_shape and input_strides size mismatch" << std::endl;
+            exit(1);
         }
 
-        if (mask_shape.size() != mask_strides.size()) {
-            throw std::runtime_error("cuda_masked_fill: mask_shape and mask_strides size mismatch");
+        if (mask_shape.size() != mask_strides.size()) {            
+            INFERNO_LOG_ERROR() << "cuda_masked_fill: mask_shape and mask_strides size mismatch" << std::endl;
+            exit(1);
         }
 
-        if (mask_rank > input_rank) {
-            throw std::runtime_error("cuda_masked_fill: mask rank cannot exceed input rank");
+        if (mask_rank > input_rank) {            
+            INFERNO_LOG_ERROR() << "cuda_masked_fill: mask rank cannot exceed input rank" << std::endl;
+            exit(1);
         }
 
         // Optional broadcastability check
@@ -117,8 +120,9 @@ namespace Inferno {
             size_t in_dim = input_shape[input_rank - mask_rank + i];
             size_t mk_dim = mask_shape[i];
 
-            if (mk_dim != 1 && mk_dim != in_dim) {
-                throw std::runtime_error("cuda_masked_fill: mask is not broadcastable to input shape");
+            if (mk_dim != 1 && mk_dim != in_dim) {                
+                INFERNO_LOG_ERROR() << "cuda_masked_fill: mask is not broadcastable to input shape" << std::endl;
+                exit(1);
             }
         }
 

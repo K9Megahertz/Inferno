@@ -477,8 +477,9 @@ namespace Inferno {
 			size_t b_dim = (i <= b_ndim) ? b[b_ndim - i] : 1;
 
 			// Broadcasting rules: dimensions must be equal or one of them must be 1
-			if (a_dim != b_dim && a_dim != 1 && b_dim != 1) {
-				throw std::runtime_error("Incompatible shapes for broadcasting");
+			if (a_dim != b_dim && a_dim != 1 && b_dim != 1) {				
+				INFERNO_LOG_ERROR() << "Incompatible shapes for broadcasting" << std::endl;
+				exit(1);
 			}
 
 			result_shape[result_ndim - i] = std::max(a_dim, b_dim);
@@ -1195,8 +1196,9 @@ namespace Inferno {
 		return dispatchFloat(dtype(), [&](auto TA) {
 			using AT = typename decltype(TA)::type;
 			auto dptr = m_impl->data_as_ptr<AT>();
-			if (!dptr) {
-				throw std::runtime_error("item_int64_impl(): tensor data pointer is null");
+			if (!dptr) {				
+				INFERNO_LOG_ERROR() << "item_int64_impl(): tensor data pointer is null" << std::endl;
+				exit(1);
 			}
 			return static_cast<double>(dptr[0]);
 			});
@@ -1218,8 +1220,9 @@ namespace Inferno {
 		return dispatchInt(dtype(), [&](auto TA) -> int64_t {
 			using AT = typename decltype(TA)::type;
 			const AT* dptr = m_impl->data_as_ptr<AT>();
-			if (!dptr) {
-				throw std::runtime_error("item_int64_impl(): tensor data pointer is null");
+			if (!dptr) {				
+				INFERNO_LOG_ERROR() << "item_int64_impl(): tensor data pointer is null" << std::endl;
+				exit(1);
 			}
 			return static_cast<int64_t>(dptr[0]);
 		});
@@ -1313,7 +1316,7 @@ namespace Inferno {
 				break;
 
 			default:
-				INFERNO_LOG_ERROR() << "Invalid device";
+				INFERNO_LOG_ERROR() << "Invalid device" << std::endl;
 				std::exit(1);
 			}
 
@@ -1378,16 +1381,19 @@ namespace Inferno {
 	}
 
 	void Tensor::copy_(const Tensor& other) {
-		if (shape() != other.shape()) {
-			throw std::runtime_error("copy_: shape mismatch");
+		if (shape() != other.shape()) {			
+			INFERNO_LOG_ERROR() << "copy_: shape mismatch" << std::endl;
+			exit(1);
 		}
 
-		if (dtype() != other.dtype()) {
-			throw std::runtime_error("copy_: dtype mismatch");
+		if (dtype() != other.dtype()) {			
+			INFERNO_LOG_ERROR() << "copy_: dtype mismatch" << std::endl;
+			exit(1);
 		}
 
-		if (!is_contiguous() || !other.is_contiguous()) {
-			throw std::runtime_error("copy_: requires contiguous tensors");
+		if (!is_contiguous() || !other.is_contiguous()) {			
+			INFERNO_LOG_ERROR() << "copy_: requires contiguous tensors" << std::endl;
+			exit(1);
 		}
 
 		size_t bytes = GetImpl(*this)->nbytes();
@@ -1414,8 +1420,9 @@ namespace Inferno {
 		else if (dst_device == DeviceType::CUDA && src_device == DeviceType::CUDA) {
 			kind = cudaMemcpyDeviceToDevice;
 		}
-		else {
-			throw std::runtime_error("copy_: unsupported device copy");
+		else {			
+			INFERNO_LOG_ERROR() << "copy_: unsupported device copy" << std::endl;
+			exit(1);
 		}
 
 		
@@ -1426,7 +1433,7 @@ namespace Inferno {
 
 	Tensor Tensor::operator[](size_t index) const {
 		if (ndim() == 0) {
-			INFERNO_LOG_ERROR() << "Cannot index into a 0-dimensional tensor";
+			INFERNO_LOG_ERROR() << "Cannot index into a 0-dimensional tensor" << std::endl;
 			std::exit(1);
 		}
 
@@ -1434,7 +1441,7 @@ namespace Inferno {
 			INFERNO_LOG_ERROR() << "Tensor index out of bounds. index="
 				<< index
 				<< ", size="
-				<< shape()[0];
+				<< shape()[0] << std::endl;
 			std::exit(1);
 		}
 
@@ -1444,8 +1451,9 @@ namespace Inferno {
 
 	template<typename T>
 	std::vector<T> tensor_to_vector_impl(const Tensor& t) {
-		if (t.dtype() != dtype_of_v<T>) {
-			throw std::runtime_error("Tensor::to_vector dtype mismatch");
+		if (t.dtype() != dtype_of_v<T>) {			
+			INFERNO_LOG_ERROR() << "Tensor::to_vector dtype mismatch" << std::endl;
+			exit(1);
 		}
 
 		Tensor cpu = t.to(Device::cpu());

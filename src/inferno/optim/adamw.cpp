@@ -94,7 +94,7 @@ namespace Inferno {
                     break;
 
                 default:
-                    INFERNO_LOG_ERROR() << "Invalid device type";
+                    INFERNO_LOG_ERROR() << "Invalid device type" << std::endl;
                     std::exit(1);
                 }
                 });
@@ -161,19 +161,23 @@ namespace Inferno {
             const AdamWParamState& loaded = it->second;
 
             if (loaded.m.shape() != param->shape()) {
-                throw std::runtime_error("AdamW load_state_dict: m shape mismatch for " + name);
+                INFERNO_LOG_ERROR() << "AdamW load_state_dict: m shape mismatch for " << name << std::endl;
+                exit(1);
             }
 
-            if (loaded.v.shape() != param->shape()) {
-                throw std::runtime_error("AdamW load_state_dict: v shape mismatch for " + name);
+            if (loaded.v.shape() != param->shape()) {                
+                INFERNO_LOG_ERROR() << "AdamW load_state_dict: v shape mismatch for " << name << std::endl;
+                exit(1);
             }
 
-            if (loaded.m.dtype() != param->dtype()) {
-                throw std::runtime_error("AdamW load_state_dict: m dtype mismatch for " + name);
+            if (loaded.m.dtype() != param->dtype()) {                
+                INFERNO_LOG_ERROR() << "AdamW load_state_dict: m dtype mismatch for " << name << std::endl;
+                exit(1);
             }
 
-            if (loaded.v.dtype() != param->dtype()) {
-                throw std::runtime_error("AdamW load_state_dict: v dtype mismatch for " + name);
+            if (loaded.v.dtype() != param->dtype()) {                
+                INFERNO_LOG_ERROR() << "AdamW load_state_dict: v dtype mismatch for " << name << std::endl;
+                exit(1);
             }
 
             AdamWState state;

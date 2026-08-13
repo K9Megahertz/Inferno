@@ -72,7 +72,7 @@ namespace Inferno {
 				break;
 
 			default:
-				INFERNO_LOG_ERROR() << "flash_attention_simple_backward only supports CUDA";
+				INFERNO_LOG_ERROR() << "flash_attention_simple_backward only supports CUDA" << std::endl;
 				exit(1);
 			}
 			});
@@ -161,7 +161,7 @@ namespace Inferno {
 				break;
 
 			default:
-				INFERNO_LOG_ERROR() << "FlashAttentionBigDaddyBackward only supports CUDA for now";
+				INFERNO_LOG_ERROR() << "FlashAttentionBigDaddyBackward only supports CUDA for now" << std::endl;
 				exit(1);
 			}
 			});
@@ -216,7 +216,7 @@ namespace Inferno {
 		Tensor g_qkv(m_qkv.dtype(), qkv_shape, "flash_attention_bigdaddy_grad_qkv", m_qkv.device());
 
 		if (m_qkv.dtype() != DType::Float32) {
-			INFERNO_LOG_ERROR()	<< "cuda_flash_backward_fused currently only supports Float32";
+			INFERNO_LOG_ERROR()	<< "cuda_flash_backward_fused currently only supports Float32" << std::endl;
 			std::exit(1);
 		}
 
@@ -244,8 +244,7 @@ namespace Inferno {
 			break;
 
 		default:
-			INFERNO_LOG_ERROR()
-				<< "FlashAttentionBigDaddyBackward only supports CUDA for now";
+			INFERNO_LOG_ERROR()	<< "FlashAttentionBigDaddyBackward only supports CUDA for now" << std::endl;
 			std::exit(1);
 		}
 

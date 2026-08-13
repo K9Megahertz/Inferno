@@ -73,7 +73,7 @@ namespace Inferno {
         const size_t out_rank = out_shape.size();
 
         if (out_rank > MAX_DIMS) {
-            INFERNO_LOG_ERROR() << "cuda_divide: out rank exceeds MAX_DIMS";
+            INFERNO_LOG_ERROR() << "cuda_divide: out rank exceeds MAX_DIMS" << std::endl;
             exit(1);
         }
 

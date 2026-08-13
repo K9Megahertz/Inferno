@@ -61,8 +61,9 @@ namespace Inferno {
         size_t offset,
         size_t N)
     {
-        if (shape.size() != strides.size()) {
-            throw std::runtime_error("cuda_contiguous_copy: shape and strides rank mismatch");
+        if (shape.size() != strides.size()) {            
+            INFERNO_LOG_ERROR() << "cuda_contiguous_copy: shape and strides rank mismatch" << std::endl;
+            exit(1);
         }
 
         if (N == 0) {
@@ -77,29 +78,32 @@ namespace Inferno {
         cudaError_t err;
 
         err = cudaMalloc(&d_shape, rank * sizeof(size_t));
-        if (err != cudaSuccess) {
-            throw std::runtime_error("cuda_contiguous_copy: cudaMalloc failed for d_shape");
+        if (err != cudaSuccess) {            
+            INFERNO_LOG_ERROR() << "cuda_contiguous_copy: cudaMalloc failed for d_shape" << std::endl;
+            exit(1);
         }
 
         err = cudaMalloc(&d_strides, rank * sizeof(size_t));
         if (err != cudaSuccess) {            
-            check_cuda(cudaFree(d_shape), "cuda_contiguous_copy failed to cudaFree");
-            throw std::runtime_error("cuda_contiguous_copy: cudaMalloc failed for d_strides");
+            check_cuda(cudaFree(d_shape), "cuda_contiguous_copy failed to cudaFree");            
+            INFERNO_LOG_ERROR() << "cuda_contiguous_copy: cudaMalloc failed for d_strides" << std::endl;
+            exit(1);
         }
 
         err = cudaMemcpy(d_shape, shape.data(), rank * sizeof(size_t), cudaMemcpyHostToDevice);
         if (err != cudaSuccess) {
             
             check_cuda(cudaFree(d_shape), "cuda_contiguous_copy failed to cudaFree");            
-            check_cuda(cudaFree(d_strides), "cuda_contiguous_copy failed to cudaFree");
-            throw std::runtime_error("cuda_contiguous_copy: cudaMemcpy failed for d_shape");
+            check_cuda(cudaFree(d_strides), "cuda_contiguous_copy failed to cudaFree");            
+            INFERNO_LOG_ERROR() << "cuda_contiguous_copy: cudaMemcpy failed for d_shape" << std::endl;
+            exit(1);
         }
 
         err = cudaMemcpy(d_strides, strides.data(), rank * sizeof(size_t), cudaMemcpyHostToDevice);
         if (err != cudaSuccess) {            
             check_cuda(cudaFree(d_shape), "cuda_contiguous_copy failed to cudaFree");            
-            check_cuda(cudaFree(d_strides), "cuda_contiguous_copy failed to cudaFree");
-            throw std::runtime_error("cuda_contiguous_copy: cudaMemcpy failed for d_strides");
+            check_cuda(cudaFree(d_strides), "cuda_contiguous_copy failed to cudaFree");            
+            INFERNO_LOG_ERROR() << "cuda_contiguous_copy: cudaMemcpy failed for d_strides" << std::endl;
         }
 
         constexpr int threads = 256;
@@ -118,15 +122,17 @@ namespace Inferno {
         err = cudaGetLastError();
         if (err != cudaSuccess) {            
             check_cuda(cudaFree(d_shape), "cuda_contiguous_copy failed to cudaFree");
-            check_cuda(cudaFree(d_strides), "cuda_contiguous_copy failed to cudaFree");
-            throw std::runtime_error(std::string("cuda_contiguous_copy: kernel launch failed: ") + cudaGetErrorString(err));
+            check_cuda(cudaFree(d_strides), "cuda_contiguous_copy failed to cudaFree");            
+            INFERNO_LOG_ERROR() << "cuda_contiguous_copy: kernel launch failed: " << cudaGetErrorString(err) << std::endl;
+            exit(1);
         }
 
         /*err = cudaDeviceSynchronize();
         if (err != cudaSuccess) {            
             check_cuda(cudaFree(d_shape), "cuda_contiguous_copy failed to cudaFree");
             check_cuda(cudaFree(d_strides), "cuda_contiguous_copy failed to cudaFree");
-            throw std::runtime_error(std::string("cuda_contiguous_copy: kernel execution failed: ") + cudaGetErrorString(err));
+            INFERNO_LOG_ERROR() << "cuda_contiguous_copy: kernel launch failed: " << cudaGetErrorString(err) << std::endl;
+            exit(1);
         }*/
         
         check_cuda(cudaFree(d_shape), "cuda_contiguous_copy failed to cudaFree");        

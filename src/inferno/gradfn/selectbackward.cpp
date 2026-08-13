@@ -42,7 +42,7 @@ namespace Inferno {
 				Inferno::cuda_fill<AT>(optr, AT(0), out.numel());
 				break;
 			default:
-				INFERNO_LOG_ERROR() << "Invalid device type";
+				INFERNO_LOG_ERROR() << "Invalid device type" << std::endl;
 				exit(1);
 			}
 
@@ -78,7 +78,7 @@ namespace Inferno {
 				break;
 
 			default:
-				INFERNO_LOG_ERROR() << "Invalid device type";
+				INFERNO_LOG_ERROR() << "Invalid device type" << std::endl;
 				exit(1);
 			}
 

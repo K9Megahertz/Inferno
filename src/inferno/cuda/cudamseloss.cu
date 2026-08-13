@@ -213,7 +213,7 @@ namespace Inferno {
 
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) {
-            INFERNO_LOG_ERROR() << "mse_loss_backward_kernel launch failed: " << cudaGetErrorString(err);
+            INFERNO_LOG_ERROR() << "mse_loss_backward_kernel launch failed: " << cudaGetErrorString(err) << std::endl;
             exit(1);
         }
 
@@ -221,7 +221,7 @@ namespace Inferno {
 
         err = cudaGetLastError();
         if (err != cudaSuccess) {
-            INFERNO_LOG_ERROR() << "mse_loss_backward_kernel execution failed: " << cudaGetErrorString(err);
+            INFERNO_LOG_ERROR() << "mse_loss_backward_kernel execution failed: " << cudaGetErrorString(err) << std::endl;
             exit(1);
         }
     }

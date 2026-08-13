@@ -46,8 +46,8 @@ namespace Inferno {
 		case DType::Int32: return fn(Tag<int>{});
 		case DType::Float32: return fn(Tag<float>{});
 		case DType::Float64: return fn(Tag<double>{});			
-		}
-		throw std::runtime_error("Unsupported dtype combination");
+		}		
+		INFERNO_LOG_ERROR() << "Unsupported dtype combination" << std::endl;
 		exit(1);
 	}
 
@@ -56,8 +56,8 @@ namespace Inferno {
 	auto dispatchInt(DType a_dt, F&& fn) {
 		switch (a_dt) {
 		case DType::Int32: return fn(Tag<int>{});			
-		}
-		throw std::runtime_error("Expected Int dtype");
+		}		
+		INFERNO_LOG_ERROR() << "Expected Int dtype" << std::endl;
 		exit(1);
 	}
 
@@ -66,8 +66,8 @@ namespace Inferno {
 		switch (a_dt) {
 		case DType::Float32: return fn(Tag<float>{});			
 		case DType::Float64: return fn(Tag<double>{});			
-		}
-		throw std::runtime_error("Expected Float dtype");
+		}		
+		INFERNO_LOG_ERROR() << "Expected Float dtype" << std::endl;
 		exit(1);
 	}
 
@@ -96,30 +96,28 @@ namespace Inferno {
 			case DType::Float64: return fn(Tag<double>{}, Tag<double>{});
 			}
 			break;
-		}
-		throw std::runtime_error("Unsupported dtype combination");
+		}		
+		INFERNO_LOG_ERROR() << "Unsupported dtype combination" << std::endl;
 		exit(1);
 	}	
 
 	template <typename F>
 	auto dispatchFloatTwo(DType a_dt, DType b_dt, F&& fn) {
-		switch (a_dt) {		
+		switch (a_dt) {
 		case DType::Float32:
-			switch (b_dt) {			
+			switch (b_dt) {
 			case DType::Float32: return fn(Tag<float>{}, Tag<float>{});
 			case DType::Float64: return fn(Tag<float>{}, Tag<double>{});
 			}
 			break;
 		case DType::Float64:
-			switch (b_dt) {			
+			switch (b_dt) {
 			case DType::Float32: return fn(Tag<double>{}, Tag<float>{});
 			case DType::Float64: return fn(Tag<double>{}, Tag<double>{});
 			}
 			break;
 		}
-		throw std::runtime_error("Unsupported dtype combination");
-		exit(1);
+		INFERNO_LOG_ERROR() << "Unsupported dtype combination" << std::endl;
+		exit(1);		
 	}
-
-
 }

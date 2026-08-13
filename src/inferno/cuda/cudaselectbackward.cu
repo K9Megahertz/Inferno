@@ -58,8 +58,9 @@ namespace Inferno {
 		size_t index
 	) {
 		const int ndim_out = static_cast<int>(out_shape.size());
-		if (gstrides.size() != out_shape.size() || parent_strides.size() != out_shape.size() + 1) {
-			throw std::runtime_error("cuda_select_backward_strided: shape/stride rank mismatch");
+		if (gstrides.size() != out_shape.size() || parent_strides.size() != out_shape.size() + 1) {			
+			INFERNO_LOG_ERROR() << "cuda_select_backward_strided: shape/stride rank mismatch" << std::endl;
+			exit(1);
 		}
 
 		size_t N = 1;

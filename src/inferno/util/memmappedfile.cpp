@@ -32,15 +32,15 @@ namespace Inferno {
             );
 
             if (hFile == INVALID_HANDLE_VALUE) {                
-                INFERNO_LOG_ERROR() << "Failed to open file : " << path;
-                return false;
+                INFERNO_LOG_ERROR() << "Failed to open file : " << path << std::endl;
+                exit(1);
             }
 
             LARGE_INTEGER fileSize{};
             if (!GetFileSizeEx(hFile, &fileSize)) {                
-                INFERNO_LOG_ERROR() << "Failed to get file size: " << path;
+                INFERNO_LOG_ERROR() << "Failed to get file size: " << path << std::endl;
                 close();
-                return false;
+                exit(1);
             }
 
             sizeBytes = static_cast<size_t>(fileSize.QuadPart);
@@ -55,9 +55,9 @@ namespace Inferno {
             );
 
             if (!hMap) {                
-                INFERNO_LOG_ERROR() << "Failed to create file mapping: " << path;
+                INFERNO_LOG_ERROR() << "Failed to create file mapping: " << path << std::endl;
                 close();
-                return false;
+                exit(1);
             }
 
             ptr = MapViewOfFile(
@@ -69,9 +69,9 @@ namespace Inferno {
             );
 
             if (!ptr) {                
-                INFERNO_LOG_ERROR() << "Failed to map view of file: " << path;
+                INFERNO_LOG_ERROR() << "Failed to map view of file: " << path << std::endl;
                 close();
-                return false;
+                exit(1);
             }
 
             return true;

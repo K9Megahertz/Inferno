@@ -324,8 +324,9 @@ namespace  Inferno {
 		case DType::Float64: return sizeof(double);
 		case DType::Int32:   return sizeof(int);
 		case DType::Bool:    return sizeof(bool);
-		default: throw std::invalid_argument("Unknown DType");
 		}
+		INFERNO_LOG_ERROR() << "Unknown DType" << std::endl;
+		exit(1);
 	}
 
 

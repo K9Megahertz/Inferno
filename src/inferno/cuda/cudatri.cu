@@ -57,8 +57,9 @@ namespace Inferno {
         int diagonal)
     {
         const size_t rank = shape.size();
-        if (rank < 2) {
-            throw std::runtime_error("cuda_triu requires rank >= 2");
+        if (rank < 2) {            
+            INFERNO_LOG_ERROR() << "cuda_triu requires rank >= 2" << std::endl;
+            exit(1);
         }
 
         size_t* d_shape = nullptr;

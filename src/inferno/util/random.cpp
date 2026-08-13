@@ -1,5 +1,6 @@
 // MathLib.cpp
 #include <inferno/util/random.h>
+#include <inferno/util/logging_internal.h>
 #include <stdexcept>
 
 // Initialize static members
@@ -56,8 +57,9 @@ void Inferno::RandomGenerator::initializeWithSeed(unsigned int seed) {
 
 std::vector<float> Inferno::RandomGenerator::generateRandomFloatVector(size_t size, float minValue, float maxValue) {
     // Check if the generator has been initialized
-    if (!isInitialized) {
-        throw std::runtime_error("Random generator not initialized. Call initialize() or initializeWithSeed() first.");
+    if (!isInitialized) {        
+        INFERNO_LOG_ERROR() << "Random generator not initialized. Call initialize() or initializeWithSeed() first." << std::endl;
+        exit(1);
     }
 
     std::vector<float> randomValues;
@@ -87,8 +89,9 @@ std::vector<float> Inferno::RandomGenerator::generateRandomFloatVector(size_t si
 
 std::vector<double> Inferno::RandomGenerator::generateRandomDoubleVector(size_t size, double minValue, double maxValue) {
     // Check if the generator has been initialized
-    if (!isInitialized) {
-        throw std::runtime_error("Random generator not initialized. Call initialize() or initializeWithSeed() first.");
+    if (!isInitialized) {        
+        INFERNO_LOG_ERROR() << "Random generator not initialized. Call initialize() or initializeWithSeed() first." << std::endl;
+        exit(1);
     }
 
     std::vector<double> randomValues;
@@ -118,8 +121,9 @@ std::vector<double> Inferno::RandomGenerator::generateRandomDoubleVector(size_t 
 
 std::vector<int> Inferno::RandomGenerator::generateRandomIntVector(size_t size, int minValue, int maxValue) {
     // Check if the generator has been initialized
-    if (!isInitialized) {
-        throw std::runtime_error("Random generator not initialized. Call initialize() or initializeWithSeed() first.");
+    if (!isInitialized) {        
+        INFERNO_LOG_ERROR() << "Random generator not initialized. Call initialize() or initializeWithSeed() first." << std::endl;
+        exit(1);
     }
 
     std::vector<int> randomValues;
@@ -149,8 +153,9 @@ std::vector<int> Inferno::RandomGenerator::generateRandomIntVector(size_t size, 
 
 float Inferno::RandomGenerator::generateRandomFloat(float minValue, float maxValue) {
     // Check if the generator has been initialized
-    if (!isInitialized) {
-        throw std::runtime_error("Random generator not initialized. Call initialize() or initializeWithSeed() first.");
+    if (!isInitialized) {        
+        INFERNO_LOG_ERROR() << "Random generator not initialized. Call initialize() or initializeWithSeed() first." << std::endl;
+        exit(1);
     }
 
     std::uniform_real_distribution<float> distribution(minValue, maxValue);
@@ -172,8 +177,9 @@ float Inferno::RandomGenerator::generateRandomFloat(float minValue, float maxVal
 
 double Inferno::RandomGenerator::generateRandomDouble(double minValue, double maxValue) {
     // Check if the generator has been initialized
-    if (!isInitialized) {
-        throw std::runtime_error("Random generator not initialized. Call initialize() or initializeWithSeed() first.");
+    if (!isInitialized) {        
+        INFERNO_LOG_ERROR() << "Random generator not initialized. Call initialize() or initializeWithSeed() first." << std::endl;
+        exit(1);
     }
 
     std::uniform_real_distribution<double> distribution(minValue, maxValue);
@@ -196,8 +202,9 @@ double Inferno::RandomGenerator::generateRandomDouble(double minValue, double ma
 
 int Inferno::RandomGenerator::generateRandomInt(int minValue, int maxValue) {
     // Check if the generator has been initialized
-    if (!isInitialized) {
-        throw std::runtime_error("Random generator not initialized. Call initialize() or initializeWithSeed() first.");
+    if (!isInitialized) {        
+        INFERNO_LOG_ERROR() << "Random generator not initialized. Call initialize() or initializeWithSeed() first." << std::endl;
+        exit(1);
     }
 
     std::uniform_int_distribution<int> distribution(minValue, maxValue);

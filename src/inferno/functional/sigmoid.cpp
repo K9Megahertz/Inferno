@@ -56,7 +56,7 @@ namespace Inferno {
 				break;
 
 			default:
-				INFERNO_LOG_ERROR() << "Invalid device type";
+				INFERNO_LOG_ERROR() << "Invalid device type" << std::endl;
 				exit(1);
 			}
 

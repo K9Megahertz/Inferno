@@ -120,12 +120,14 @@ namespace Inferno {
 	) {
 		int ndim = static_cast<int>(shape.size());
 		if (axis < 0) axis += ndim;
-		if (axis < 0 || axis >= ndim) {
-			throw std::runtime_error("softmax: invalid axis");
+		if (axis < 0 || axis >= ndim) {			
+			INFERNO_LOG_ERROR() << "softmax: invalid axis" << std::endl;
+			exit(1);
 		}
 
-		if (astrides.size() != shape.size() || ostrides.size() != shape.size()) {
-			throw std::runtime_error("softmax: shape/stride rank mismatch");
+		if (astrides.size() != shape.size() || ostrides.size() != shape.size()) {			
+			INFERNO_LOG_ERROR() << "softmax: shape/stride rank mismatch" << std::endl;
+			exit(1);
 		}
 
 		size_t axis_size = shape[axis];
@@ -313,13 +315,16 @@ namespace Inferno {
 		if (axis < 0)
 			axis += ndim;
 
-		if (axis < 0 || axis >= ndim)
-			throw std::runtime_error("softmax backward: invalid axis");
+		if (axis < 0 || axis >= ndim) {			
+			INFERNO_LOG_ERROR() << "softmax backward: invalid axis" << std::endl;
+			exit(1);
+		}
 
 		if (ystrides.size() != shape.size() ||
 			gstrides.size() != shape.size() ||
-			ostrides.size() != shape.size()) {
-			throw std::runtime_error("softmax backward: shape/stride rank mismatch");
+			ostrides.size() != shape.size()) {			
+			INFERNO_LOG_ERROR() << "softmax backward: shape/stride rank mismatch" << std::endl;
+			exit(1);
 		}
 
 		size_t axis_size = shape[axis];

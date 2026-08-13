@@ -17,7 +17,7 @@ namespace Inferno {
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	Tensor Module::forward(Tensor& input) {
-		INFERNO_LOG_ERROR() << "forward(input) not implemented!";
+		INFERNO_LOG_ERROR() << "forward(input) not implemented!" << std::endl;
 		exit(1);
 	};
 
@@ -54,7 +54,7 @@ namespace Inferno {
 	void Module::register_parameter(const std::string& name, Tensor* tensor) {
 		// Check for name collisions
 		if (check_name_exists(name)) {
-			INFERNO_LOG_ERROR() << "Module/Parameter/Buffer name conflict, already used";
+			INFERNO_LOG_ERROR() << "Module/Parameter/Buffer name conflict, already used" << std::endl;
 			exit(1);
 		}
 
@@ -77,7 +77,7 @@ namespace Inferno {
 	void Module::register_module(const std::string& name, Module* module) {
 		// Check for name collisions
 		if (check_name_exists(name)) {
-			INFERNO_LOG_ERROR() << "Module/Parameter/Buffer name conflict, already used";
+			INFERNO_LOG_ERROR() << "Module/Parameter/Buffer name conflict, already used" << std::endl;
 			exit(1);
 		}
 
@@ -99,7 +99,7 @@ namespace Inferno {
 	void Module::register_buffer(const std::string& name, Tensor* tensor) {
 		// Check for name collisions
 		if (check_name_exists(name)) {
-			INFERNO_LOG_ERROR() << "Module/Parameter/Buffer name conflict, already used";
+			INFERNO_LOG_ERROR() << "Module/Parameter/Buffer name conflict, already used" << std::endl;
 			exit(1);
 		}
 		// Store pointer to the tensor		
@@ -278,22 +278,26 @@ namespace Inferno {
 
 			auto it = state.find(full_name);
 
-			if (it == state.end()) {
-				throw std::runtime_error("load_state_dict: missing parameter: " + full_name);
+			if (it == state.end()) {				
+				INFERNO_LOG_ERROR() << "load_state_dict: missing parameter: " << full_name << std::endl;
+				exit(1);
 			}
 
 			const Tensor& loaded = it->second;
 
-			if (param == nullptr) {
-				throw std::runtime_error("load_state_dict: null parameter pointer: " + full_name);
+			if (param == nullptr) {				
+				INFERNO_LOG_ERROR() << "load_state_dict: null parameter pointer: " << full_name << std::endl;
+				exit(1);
 			}
 
-			if (param->shape() != loaded.shape()) {
-				throw std::runtime_error("load_state_dict: shape mismatch for: " + full_name);
+			if (param->shape() != loaded.shape()) {				
+				INFERNO_LOG_ERROR() << "load_state_dict: shape mismatch for: " << full_name << std::endl;
+				exit(1);
 			}
 
-			if (param->dtype() != loaded.dtype()) {
-				throw std::runtime_error("load_state_dict: dtype mismatch for: " + full_name);
+			if (param->dtype() != loaded.dtype()) {				
+				INFERNO_LOG_ERROR() << "load_state_dict: dtype mismatch for: " << full_name << std::endl;
+				exit(1);
 			}
 			
 			param->copy_(loaded);
@@ -312,22 +316,26 @@ namespace Inferno {
 
 			auto it = state.find(full_name);
 
-			if (it == state.end()) {
-				throw std::runtime_error("load_state_dict: missing buffer: " + full_name);
+			if (it == state.end()) {				
+				INFERNO_LOG_ERROR() << "load_state_dict: missing buffer: " << full_name << std::endl;
+				exit(1);
 			}
 
 			const Tensor& loaded = it->second;
 
-			if (buffer == nullptr) {
-				throw std::runtime_error("load_state_dict: null buffer pointer: " + full_name);
+			if (buffer == nullptr) {				
+				INFERNO_LOG_ERROR() << "load_state_dict: null buffer pointer: " << full_name << std::endl;
+				exit(1);
 			}
 
-			if (buffer->shape() != loaded.shape()) {
-				throw std::runtime_error("load_state_dict: buffer shape mismatch for: " + full_name);
+			if (buffer->shape() != loaded.shape()) {				
+				INFERNO_LOG_ERROR() << "load_state_dict: buffer shape mismatch for: " << full_name << std::endl;
+				exit(1);
 			}
 
-			if (buffer->dtype() != loaded.dtype()) {
-				throw std::runtime_error("load_state_dict: buffer dtype mismatch for: " + full_name);
+			if (buffer->dtype() != loaded.dtype()) {				
+				INFERNO_LOG_ERROR() << "load_state_dict: buffer dtype mismatch for: " << full_name << std::endl;
+				exit(1);
 			}
 
 			buffer->copy_(loaded);
@@ -340,8 +348,9 @@ namespace Inferno {
 			const std::string& child_name = entry.first;
 			Module* child = entry.second;
 
-			if (child == nullptr) {
-				throw std::runtime_error("load_state_dict: null child module: " + child_name);
+			if (child == nullptr) {				
+				INFERNO_LOG_ERROR() << "load_state_dict: null child module: " << child_name << std::endl;
+				exit(1);
 			}
 
 			std::string child_prefix = prefix.empty() ? child_name : prefix + "." + child_name;

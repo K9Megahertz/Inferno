@@ -471,14 +471,14 @@ namespace Inferno {
 
 	inline void check_cuda(cudaError_t err, const char* msg) {
 		if (err != cudaSuccess) {
-			INFERNO_LOG_ERROR() << std::string(msg) + ": " + cudaGetErrorString(err);
+			INFERNO_LOG_ERROR() << std::string(msg) + ": " + cudaGetErrorString(err) << std::endl;
 			exit(1);
 		}
 	}
 
 	inline void check_cublas(cublasStatus_t status, const char* msg) {
 		if (status != CUBLAS_STATUS_SUCCESS) {
-			INFERNO_LOG_ERROR() << std::string(msg) + ": " + std::to_string(static_cast<int>(status));
+			INFERNO_LOG_ERROR() << std::string(msg) + ": " + std::to_string(static_cast<int>(status)) << std::endl;
 			exit(1);
 		}
 	}

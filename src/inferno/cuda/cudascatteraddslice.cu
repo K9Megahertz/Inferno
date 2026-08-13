@@ -85,8 +85,9 @@ namespace Inferno {
 		size_t start,
 		size_t step)
 	{
-		if (shape.size() != out_shape.size()) {
-			throw std::runtime_error("cuda_scatter_add_slice: rank mismatch");
+		if (shape.size() != out_shape.size()) {			
+			INFERNO_LOG_ERROR() << "cuda_scatter_add_slice: rank mismatch" << std::endl;
+			exit(1);
 		}
 
 		const size_t rank = out_shape.size();
